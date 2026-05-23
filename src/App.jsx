@@ -1,0 +1,1488 @@
+import { useState, useEffect } from 'react'
+
+// Home screen components
+import TopNavBar from './components/TopNavBar'
+import HeroSection from './components/HeroSection'
+import WelcomeBackCard from './components/WelcomeBackCard'
+import FormPicker from './components/FormPicker'
+import BottomNavBar from './components/BottomNavBar'
+import WalletScreen from './screens/WalletScreen'
+import HistoryScreen from './screens/HistoryScreen'
+import ProfileScreen from './screens/ProfileScreen'
+
+// TRN application flow screens
+import TRNWelcomeScreen from './screens/TRNWelcomeScreen'
+import TRNReviewScreen from './screens/TRNReviewScreen'
+import TRNFormReadyScreen from './screens/TRNFormReadyScreen'
+
+// NIS application flow screens
+import NISWelcomeScreen from './screens/NISWelcomeScreen'
+import NISFormReadyScreen from './screens/NISFormReadyScreen'
+
+// Passport application flow screens
+import WelcomeScreen from './screens/WelcomeScreen'
+import RoutingScreen from './screens/RoutingScreen'
+import NoticeScreen from './screens/NoticeScreen'
+import FormTypeScreen from './screens/FormTypeScreen'
+import QuestionScreen from './screens/QuestionScreen'
+import SectionACompleteScreen from './screens/SectionACompleteScreen'
+import SectionBIntroScreen from './screens/SectionBIntroScreen'
+import SectionBCompleteScreen from './screens/SectionBCompleteScreen'
+import SectionCIntroScreen from './screens/SectionCIntroScreen'
+import SectionCCompleteScreen from './screens/SectionCCompleteScreen'
+import SectionDIntroScreen from './screens/SectionDIntroScreen'
+import SectionDCompleteScreen from './screens/SectionDCompleteScreen'
+import SectionEIntroScreen from './screens/SectionEIntroScreen'
+import SectionEDeclarationScreen from './screens/SectionEDeclarationScreen'
+import SectionEPassportNumScreen from './screens/SectionEPassportNumScreen'
+import SectionECompleteScreen from './screens/SectionECompleteScreen'
+import SectionFIntroScreen from './screens/SectionFIntroScreen'
+import SectionFTransitionScreen from './screens/SectionFTransitionScreen'
+import SectionFCompleteScreen from './screens/SectionFCompleteScreen'
+import SectionGScreen from './screens/SectionGScreen'
+import FinalCompleteScreen from './screens/FinalCompleteScreen'
+import AnswersSummaryScreen from './screens/AnswersSummaryScreen'
+import FormReadyScreen from './screens/FormReadyScreen'
+
+// Question data
+import {
+  SECTION_A_QUESTIONS, SECTION_A_START, SECTION_A_BASE_COUNT,
+  SECTION_B_QUESTIONS, SECTION_B_START, SECTION_B_BASE_COUNT,
+  SECTION_C_QUESTIONS, SECTION_C_START, SECTION_C_BASE_COUNT,
+  SECTION_D_QUESTIONS, SECTION_D_START,
+  SECTION_F_C1_QUESTIONS, SECTION_F_C1_START,
+  SECTION_F_C2_QUESTIONS, SECTION_F_C2_START,
+  SECTION_F_BASE_COUNT,
+} from './data/passportFlow'
+
+import { TRN_QUESTIONS, TRN_START, TRN_BASE_COUNT } from './data/trnFlow'
+import { NIS_QUESTIONS, NIS_START, NIS_BASE_COUNT } from './data/nisFlow'
+
+import './index.css'
+
+// ── Screen name constants ─────────────────────────────────────────────────────
+const S = {
+  HOME:                 'home',
+  WELCOME:              'welcome',
+  FIRST_OR_RENEWAL:     'first-or-renewal',
+  RENEWAL_AGE:          'renewal-age',
+  RENEWAL_NAME:         'renewal-name',
+  FORM_TYPE_EXPLAIN:    'form-type-explain',
+  SECTION_A:            'section-a',
+  SECTION_A_COMPLETE:   'section-a-complete',
+  SECTION_B_INTRO:      'section-b-intro',
+  SECTION_B:            'section-b',
+  SECTION_B_COMPLETE:   'section-b-complete',
+  SECTION_C_ROUTING:    'section-c-routing',
+  PAGE2_SIG_NOTICE:     'page2-sig-notice',
+  SECTION_C_INTRO:      'section-c-intro',
+  SECTION_C:            'section-c',
+  SECTION_C_SIG_NOTICE: 'section-c-sig-notice',
+  SECTION_C_COMPLETE:   'section-c-complete',
+  SECTION_D_INTRO:      'section-d-intro',
+  SECTION_D_STATUS:     'section-d-status',
+  SECTION_D:            'section-d',
+  LOST_STOLEN_NOTICE:   'lost-stolen-notice',
+  SECTION_D_COMPLETE:   'section-d-complete',
+  SECTION_E_INTRO:      'section-e-intro',
+  SECTION_E_DECLARATION:'section-e-declaration',
+  SECTION_E_PASSPORT:   'section-e-passport',
+  SECTION_E_SIG_NOTICE: 'section-e-sig-notice',
+  SECTION_E_SIGN_REMIND:'section-e-sign-remind',
+  SECTION_E_COMPLETE:   'section-e-complete',
+  SECTION_F_INTRO:      'section-f-intro',
+  SECTION_F_CONTACT1:   'section-f-contact1',
+  SECTION_F_TRANSITION: 'section-f-transition',
+  SECTION_F_CONTACT2:   'section-f-contact2',
+  SECTION_F_COMPLETE:   'section-f-complete',
+  SECTION_G:            'section-g',
+  FINAL_COMPLETE:       'final-complete',
+  ANSWERS_SUMMARY:      'answers-summary',
+  FORM_READY:           'form-ready',
+
+  TRN_WELCOME:          'trn-welcome',
+  TRN_FLOW:             'trn-flow',
+  TRN_REVIEW:           'trn-review',
+  TRN_FORM_READY:       'trn-form-ready',
+
+  NIS_WELCOME:          'nis-welcome',
+  NIS_FLOW:             'nis-flow',
+  NIS_FORM_READY:       'nis-form-ready',
+}
+
+// ── Persistence ───────────────────────────────────────────────────────────────
+
+const SAVE_KEY    = 'fillformeasy_passport_v1'
+const HISTORY_KEY = 'fillformeasy_history_v1'
+const TRN_SAVE_KEY = 'trnFormProgress'
+const NIS_SAVE_KEY = 'nisFormProgress'
+
+// Only save when the user has entered the real form sections (not pre-flow routing)
+const SAVEABLE_SCREENS = new Set([
+  S.SECTION_A, S.SECTION_A_COMPLETE,
+  S.SECTION_B_INTRO, S.SECTION_B, S.SECTION_B_COMPLETE,
+  S.SECTION_C_ROUTING, S.PAGE2_SIG_NOTICE, S.SECTION_C_INTRO,
+  S.SECTION_C, S.SECTION_C_SIG_NOTICE, S.SECTION_C_COMPLETE,
+  S.SECTION_D_INTRO, S.SECTION_D_STATUS, S.SECTION_D,
+  S.LOST_STOLEN_NOTICE, S.SECTION_D_COMPLETE,
+  S.SECTION_E_INTRO, S.SECTION_E_DECLARATION, S.SECTION_E_PASSPORT,
+  S.SECTION_E_SIG_NOTICE, S.SECTION_E_COMPLETE,
+  S.SECTION_F_INTRO, S.SECTION_F_CONTACT1, S.SECTION_F_TRANSITION,
+  S.SECTION_F_CONTACT2, S.SECTION_F_COMPLETE,
+  S.SECTION_G, S.FINAL_COMPLETE,
+])
+
+// Fixed progress for non-question screens (intros, notices, complete screens)
+const SCREEN_PROGRESS = {
+  [S.SECTION_A_COMPLETE]:    { label: 'Personal Information',  pct: 35 },
+  [S.SECTION_B_INTRO]:       { label: 'Marriage Details',      pct: 37 },
+  [S.SECTION_B_COMPLETE]:    { label: 'Marriage Details',      pct: 46 },
+  [S.SECTION_C_ROUTING]:     { label: 'Parental Consent',      pct: 48 },
+  [S.PAGE2_SIG_NOTICE]:      { label: 'Parental Consent',      pct: 49 },
+  [S.SECTION_C_INTRO]:       { label: 'Parental Consent',      pct: 50 },
+  [S.SECTION_C_SIG_NOTICE]:  { label: 'Parental Consent',      pct: 57 },
+  [S.SECTION_C_COMPLETE]:    { label: 'Parental Consent',      pct: 59 },
+  [S.SECTION_D_INTRO]:       { label: 'Previous Passport',     pct: 61 },
+  [S.SECTION_D_STATUS]:      { label: 'Previous Passport',     pct: 63 },
+  [S.LOST_STOLEN_NOTICE]:    { label: 'Previous Passport',     pct: 69 },
+  [S.SECTION_D_COMPLETE]:    { label: 'Previous Passport',     pct: 71 },
+  [S.SECTION_E_INTRO]:       { label: 'Declaration',           pct: 73 },
+  [S.SECTION_E_DECLARATION]: { label: 'Declaration',           pct: 75 },
+  [S.SECTION_E_PASSPORT]:    { label: 'Declaration',           pct: 77 },
+  [S.SECTION_E_SIG_NOTICE]:  { label: 'Declaration',           pct: 79 },
+  [S.SECTION_E_COMPLETE]:    { label: 'Declaration',           pct: 81 },
+  [S.SECTION_F_INTRO]:       { label: 'Emergency Contacts',    pct: 83 },
+  [S.SECTION_F_TRANSITION]:  { label: 'Emergency Contacts',    pct: 90 },
+  [S.SECTION_F_COMPLETE]:    { label: 'Emergency Contacts',    pct: 96 },
+  [S.SECTION_G]:             { label: 'Final Checklist',       pct: 98 },
+  [S.FINAL_COMPLETE]:        { label: 'Almost Done',           pct: 99 },
+}
+
+// Returns { label, pct, stepNum, stepOf }
+// For question screens, pct advances per-question using the question's base position.
+// For transition/notice/complete screens, pct is a fixed milestone value.
+function computeProgress(snap) {
+  if (!snap) return { label: 'Passport Application', pct: 0, stepNum: null, stepOf: null }
+  const s = snap.screen
+
+  // Question screens — linear interpolation within each section's pct range
+  if (s === S.SECTION_A) {
+    const base = SECTION_A_QUESTIONS[snap.currentAQId]?.base ?? 1
+    return { label: 'Personal Information', stepNum: base, stepOf: SECTION_A_BASE_COUNT,
+      pct: Math.round(5 + (base / SECTION_A_BASE_COUNT) * 30) }
+  }
+  if (s === S.SECTION_B) {
+    const base = SECTION_B_QUESTIONS[snap.currentBQId]?.base ?? 1
+    return { label: 'Marriage Details', stepNum: base, stepOf: SECTION_B_BASE_COUNT,
+      pct: Math.round(37 + (base / SECTION_B_BASE_COUNT) * 9) }
+  }
+  if (s === S.SECTION_C) {
+    const base = SECTION_C_QUESTIONS[snap.currentCQId]?.base ?? 1
+    return { label: 'Parental Consent', stepNum: base, stepOf: SECTION_C_BASE_COUNT,
+      pct: Math.round(50 + (base / SECTION_C_BASE_COUNT) * 9) }
+  }
+  if (s === S.SECTION_D) {
+    const base = SECTION_D_QUESTIONS[snap.currentDQId]?.base ?? 1
+    return { label: 'Previous Passport', stepNum: base, stepOf: 8,
+      pct: Math.round(63 + (base / 8) * 8) }
+  }
+  if (s === S.SECTION_F_CONTACT1) {
+    const base = SECTION_F_C1_QUESTIONS[snap.currentF1QId]?.base ?? 1
+    return { label: 'Emergency Contact 1', stepNum: base, stepOf: SECTION_F_BASE_COUNT,
+      pct: Math.round(83 + (base / SECTION_F_BASE_COUNT) * 7) }
+  }
+  if (s === S.SECTION_F_CONTACT2) {
+    const base = SECTION_F_C2_QUESTIONS[snap.currentF2QId]?.base ?? 1
+    return { label: 'Emergency Contact 2', stepNum: base, stepOf: SECTION_F_BASE_COUNT,
+      pct: Math.round(90 + (base / SECTION_F_BASE_COUNT) * 6) }
+  }
+
+  // All other screens — fixed milestone
+  const fixed = SCREEN_PROGRESS[s]
+  return fixed
+    ? { ...fixed, stepNum: null, stepOf: null }
+    : { label: 'Passport Application', pct: 50, stepNum: null, stepOf: null }
+}
+
+function formatSavedAt(ts) {
+  if (!ts) return ''
+  const diffMs = Date.now() - ts
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 2) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(diffMs / 3600000)
+  if (hours < 24) return `${hours}h ago`
+  if (Math.floor(diffMs / 86400000) === 1) return 'Yesterday'
+  return new Date(ts).toLocaleDateString('en-JM', { month: 'short', day: 'numeric' })
+}
+
+// ── Notice content ────────────────────────────────────────────────────────────
+
+const PAGE2_SIG_SPEECH =
+  'There is a large empty box in the middle of page 2 that says Signature of the Applicant inside it. Do not sign that box at home. The passport officer will ask you to sign it in front of them at the office. Leave that box empty until then.'
+const PAGE2_SIG_LINES = [
+  'There is a large empty box in the middle of page 2 that says "Signature of the Applicant" inside it.',
+  'Do not sign that box at home.',
+  'The passport officer will ask you to sign it in front of them at the office. Leave that box empty until then.',
+]
+
+const C_SIG_SPEECH =
+  'You need to sign the consent section on page 2 — the section that starts with the word CONSENT FOR MINOR — before you go to the office. Your signature must match the signature on the photo ID you are submitting with your application.'
+const C_SIG_LINES = [
+  'You need to sign the consent section on page 2 — the section that starts with the word CONSENT FOR MINOR — before you go to the office.',
+  'Your signature must match the signature on the photo ID you are submitting with your application.',
+]
+
+const LOST_STOLEN_SPEECH =
+  'Before you come to submit your application, you must first go to your nearest PICA passport office and make a report about your lost or stolen passport. You will need that report when you come to submit. Do not come without it.'
+const LOST_STOLEN_LINES = [
+  'Before you come to submit your application, you must first go to your nearest PICA passport office and make a report about your lost or stolen passport.',
+  'You will need that report when you come to submit.',
+  'Do not come without it.',
+]
+
+const E_SIG_SPEECH =
+  'You need to sign the declaration section on page 2 — the section that starts with the words DECLARATION OF APPLICANT — before you go to the office. This signature must be identical to the one you signed at the consent section and the one on your photo ID.'
+const E_SIG_LINES = [
+  'You need to sign the declaration section on page 2 — the section that starts with the words DECLARATION OF APPLICANT — before you go to the office.',
+  'This signature must be identical to the one you signed at the consent section and the one on your photo ID.',
+]
+
+const E_SIGN_REMIND_SPEECH =
+  'There is a large empty box in the middle of page 2 that says Signature of the Applicant inside it. Do not sign that box at home. The passport officer will ask you to sign it in front of them at the office. Leave that box empty until then.'
+const E_SIGN_REMIND_LINES = [
+  'There is a large empty box in the middle of page 2 that says "Signature of the Applicant" inside it.',
+  'Do not sign that box at home.',
+  'The passport officer will ask you to sign it in front of them at the office. Leave that box empty until then.',
+]
+
+// ── Common Section D question IDs (those that return null = end of common Qs)
+const D_COMMON_IDS = new Set([
+  'dPassportNumber', 'dIssueDay', 'dIssueMonth', 'dIssueYear',
+  'dIssuePlace', 'dPrevSurname', 'dPrevFirstName',
+  'dPrevHasMiddle', 'dPrevMiddleName',
+])
+
+// ── TEMPORARY: NIS marital status debug ──────────────────────────────────────
+const NIS_TEST_MODE = false
+
+const NIS_TEST_FAKE = {
+  title: 'Mr', firstName: 'Test', lastName: 'User',
+  hasMiddleName: 'No', hasMaidenName: 'No', hasOtherNames: 'No',
+  birthDay: '15', birthMonth: 'June', birthYear: '1990',
+  birthCountry: 'Jamaica', birthParish: 'Kingston',
+  motherFirstName: 'Mary', motherLastName: 'User', motherHasMiddle: 'No',
+  homeDistrict: 'Denham Town', homeParish: 'Kingston', homeCountry: 'Jamaica',
+  hasHomeStreet: 'No', mailingAddressSame: 'Yes',
+  hasEmail: 'No', hasWorkPhone: 'No',
+}
+
+// Ordered sequence — position in this array drives advancement, not question.next()
+const NIS_TEST_SEQUENCE = ['maritalStatus', 'sex', 'employmentType']
+
+const NIS_TEST_QUESTIONS = {
+  maritalStatus: {
+    question: 'What is your marital status?',
+    type: 'choice',
+    options: ['Single', 'Married', 'Common-Law Union', 'Widowed', 'Divorced'],
+    base: 1,
+    next: () => 'sex',
+  },
+  sex: {
+    question: 'What is your sex?',
+    type: 'choice',
+    options: ['Male', 'Female'],
+    base: 2,
+    next: () => 'employmentType',
+  },
+  employmentType: {
+    question: 'What is your employment status?',
+    type: 'choice',
+    options: ['Employed', 'Self-Employed', 'Domestic', 'Student', 'Unemployed'],
+    base: 3,
+    next: () => null,
+  },
+}
+const NIS_TEST_DATA = {
+  title: 'Mr',
+  firstName: 'Romaine', lastName: 'Blake',
+  hasMiddleName: 'No', hasMaidenName: 'No', hasOtherNames: 'No',
+  sex: 'Male',
+  birthDay: '15', birthMonth: 'June', birthYear: '1990',
+  birthCountry: 'Jamaica', birthParish: 'St. Elizabeth',
+  prevNIS: '__SKIP__', trnNumber: '__SKIP__',
+  maritalStatus: 'Married',
+  spouseTitle: 'Mrs', spouseLastName: 'Blake', spouseFirstName: 'Sandra',
+  spouseHasMiddle: 'No', spouseMaidenName: '__SKIP__',
+  marriageDay: '10', marriageMonth: 'March', marriageYear: '2015',
+  spouseBirthDay: '22', spouseBirthMonth: 'August', spouseBirthYear: '1992',
+  homeDistrict: 'Southfield', homeParish: 'St. Elizabeth', homeCountry: 'Jamaica',
+  hasHomeStreet: 'Yes', homeStreet: '14 Main Street',
+  mailingAddressSame: 'Yes',
+  hasEmail: 'Yes', email: 'romaineblake68@gmail.com',
+  cellPhone: '876-555-1234', hasHomePhone: 'No', hasWorkPhone: 'No',
+  fatherLastName: '__SKIP__', fatherFirstName: '__SKIP__', fatherHasMiddle: 'No',
+  motherLastName: 'Blake', motherFirstName: 'Mary',
+  motherHasMiddle: 'No', motherMaidenName: '__SKIP__',
+  employmentType: 'Employed',
+  occupation: 'Teacher',
+  employerName: 'Ministry of Education',
+  employerAddress: '2 National Heroes Circle, Kingston',
+  employerRefNumber: '__SKIP__', industryType: 'Education',
+}
+// ── App ───────────────────────────────────────────────────────────────────────
+
+export default function App() {
+  const [screen, setScreen] = useState(S.HOME)
+  const [activeTab, setActiveTab] = useState('home')
+
+  // Saved progress — loaded once from localStorage on mount
+  const [savedProgress, setSavedProgress] = useState(() => {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  })
+
+  // Completed form history — persisted across sessions
+  const [completedForms, setCompletedForms] = useState(() => {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY)
+      return raw ? JSON.parse(raw) : []
+    } catch { return [] }
+  })
+
+  // Form-type routing
+  const [formType, setFormType]               = useState('regular')
+  const [formTypeReason, setFormTypeReason]   = useState('first-time')
+  const [formTypeBackScreen, setFormTypeBack] = useState(S.FIRST_OR_RENEWAL)
+  const [isFirstTime, setIsFirstTime]         = useState(null)
+
+  // Section A
+  const [currentAQId, setCurrentAQId]     = useState(SECTION_A_START)
+  const [aHistory, setAHistory]           = useState([])
+  const [aAnswers, setAAnswers]           = useState({})
+  const [aReturnScreen, setAReturnScreen] = useState(S.HOME)
+
+  // Section B
+  const [currentBQId, setCurrentBQId] = useState(SECTION_B_START)
+  const [bHistory, setBHistory]       = useState([])
+  const [bAnswers, setBAnswers]       = useState({})
+
+  // Section C
+  const [currentCQId, setCurrentCQId] = useState(SECTION_C_START)
+  const [cHistory, setCHistory]       = useState([])
+  const [cAnswers, setCAnswers]       = useState({})
+
+  // Section D
+  const [currentDQId, setCurrentDQId]       = useState(SECTION_D_START)
+  const [dHistory, setDHistory]             = useState([])
+  const [dAnswers, setDAnswers]             = useState({})
+  const [passportStatus, setPassportStatus] = useState('renewing')
+
+  // Section E
+  const [ePassportNumber, setEPassportNumber] = useState('')
+
+  // Section F — Contact 1
+  const [currentF1QId, setCurrentF1QId] = useState(SECTION_F_C1_START)
+  const [f1History, setF1History]       = useState([])
+  const [f1Answers, setF1Answers]       = useState({})
+
+  // Section F — Contact 2
+  const [currentF2QId, setCurrentF2QId] = useState(SECTION_F_C2_START)
+  const [f2History, setF2History]       = useState([])
+  const [f2Answers, setF2Answers]       = useState({})
+
+  // Generated PDF
+  const [pdfUrl, setPdfUrl] = useState(null)
+
+  // TRN flow
+  const [trnQId, setTrnQId]       = useState(TRN_START)
+  const [trnHistory, setTrnHistory] = useState([])
+  const [trnAnswers, setTrnAnswers] = useState({})
+  const [trnPdfUrl, setTrnPdfUrl]   = useState(null)
+
+  // TRN saved progress (for Resume button on TRN welcome screen)
+  const [savedTRNProgress, setSavedTRNProgress] = useState(() => {
+    try {
+      const raw = localStorage.getItem(TRN_SAVE_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  })
+
+  // NIS flow
+  const [nisQId, setNisQId]       = useState(NIS_START)
+  const [nisHistory, setNisHistory] = useState([])
+  const [nisAnswers, setNisAnswers] = useState({})
+  const [nisPdfUrl, setNisPdfUrl]   = useState(null)
+
+  // NIS saved progress (for Resume button on NIS welcome screen)
+  const [savedNISProgress, setSavedNISProgress] = useState(() => {
+    try {
+      const raw = localStorage.getItem(NIS_SAVE_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  })
+
+  // Dynamic back destinations
+  const [sectionDBack, setSectionDBack] = useState(S.SECTION_C_ROUTING)
+  const [sectionEBack, setSectionEBack] = useState(S.SECTION_D_COMPLETE)
+
+  // ── TEMPORARY: jump straight to NIS marital status question ──────────────
+  useEffect(() => {
+    if (!NIS_TEST_MODE) return
+    setNisAnswers(NIS_TEST_FAKE)
+    setNisQId('maritalStatus')
+    setNisHistory([])
+    setScreen(S.NIS_FLOW)
+  }, [])
+  // ── END TEMPORARY ─────────────────────────────────────────────────────────
+
+
+  // ── Navigation helpers ──────────────────────────────────────────────────
+
+  const goHome = () => {
+    setScreen(S.HOME)
+    setActiveTab('home')
+    setCurrentAQId(SECTION_A_START)
+    setAHistory([])
+  }
+
+  const startSectionA = (returnScreen) => {
+    setAReturnScreen(returnScreen)
+    setCurrentAQId(SECTION_A_START)
+    setAHistory([])
+    setScreen(S.SECTION_A)
+  }
+
+  const goFormTypeExplain = (type, reason, backScreen, firstTime = null) => {
+    setFormType(type)
+    setFormTypeReason(reason)
+    setFormTypeBack(backScreen)
+    if (firstTime !== null) setIsFirstTime(firstTime)
+    setScreen(S.FORM_TYPE_EXPLAIN)
+  }
+
+  const goSectionEIntro = (backTo) => {
+    setSectionEBack(backTo)
+    setScreen(S.SECTION_E_INTRO)
+  }
+
+  // Called after Section C complete (or skipped) — routes to D or E
+  const afterSectionC = (backFrom) => {
+    if (isFirstTime) {
+      goSectionEIntro(backFrom)
+    } else {
+      setSectionDBack(backFrom)
+      setScreen(S.SECTION_D_INTRO)
+    }
+  }
+
+  // ── Auto-save progress to localStorage ─────────────────────────────────────
+
+  useEffect(() => {
+    if (!SAVEABLE_SCREENS.has(screen)) return
+    const snap = {
+      savedAt: Date.now(), screen,
+      formType, formTypeReason, formTypeBackScreen, isFirstTime,
+      currentAQId, aHistory, aAnswers, aReturnScreen,
+      currentBQId, bHistory, bAnswers,
+      currentCQId, cHistory, cAnswers,
+      currentDQId, dHistory, dAnswers, passportStatus,
+      ePassportNumber,
+      currentF1QId, f1History, f1Answers,
+      currentF2QId, f2History, f2Answers,
+      sectionDBack, sectionEBack,
+    }
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(snap))
+      setSavedProgress(snap)
+    } catch (e) {
+      console.warn('[FillFormEasy] Could not save progress:', e.message)
+    }
+  }, [ // eslint-disable-line react-hooks/exhaustive-deps
+    screen, formType, formTypeReason, formTypeBackScreen, isFirstTime,
+    currentAQId, aHistory, aAnswers, aReturnScreen,
+    currentBQId, bHistory, bAnswers,
+    currentCQId, cHistory, cAnswers,
+    currentDQId, dHistory, dAnswers, passportStatus,
+    ePassportNumber,
+    currentF1QId, f1History, f1Answers,
+    currentF2QId, f2History, f2Answers,
+    sectionDBack, sectionEBack,
+  ])
+
+  // ── Resume saved session ─────────────────────────────────────────────────────
+
+  const handleResume = () => {
+    if (!savedProgress) return
+    const s = savedProgress
+    setFormType(s.formType ?? 'regular')
+    setFormTypeReason(s.formTypeReason ?? 'first-time')
+    setFormTypeBack(s.formTypeBackScreen ?? S.FIRST_OR_RENEWAL)
+    setIsFirstTime(s.isFirstTime ?? null)
+    setCurrentAQId(s.currentAQId ?? SECTION_A_START)
+    setAHistory(s.aHistory ?? [])
+    setAAnswers(s.aAnswers ?? {})
+    setAReturnScreen(s.aReturnScreen ?? S.FORM_TYPE_EXPLAIN)
+    setCurrentBQId(s.currentBQId ?? SECTION_B_START)
+    setBHistory(s.bHistory ?? [])
+    setBAnswers(s.bAnswers ?? {})
+    setCurrentCQId(s.currentCQId ?? SECTION_C_START)
+    setCHistory(s.cHistory ?? [])
+    setCAnswers(s.cAnswers ?? {})
+    setCurrentDQId(s.currentDQId ?? SECTION_D_START)
+    setDHistory(s.dHistory ?? [])
+    setDAnswers(s.dAnswers ?? {})
+    setPassportStatus(s.passportStatus ?? 'renewing')
+    setEPassportNumber(s.ePassportNumber ?? '')
+    setCurrentF1QId(s.currentF1QId ?? SECTION_F_C1_START)
+    setF1History(s.f1History ?? [])
+    setF1Answers(s.f1Answers ?? {})
+    setCurrentF2QId(s.currentF2QId ?? SECTION_F_C2_START)
+    setF2History(s.f2History ?? [])
+    setF2Answers(s.f2Answers ?? {})
+    setSectionDBack(s.sectionDBack ?? S.SECTION_C_ROUTING)
+    setSectionEBack(s.sectionEBack ?? S.SECTION_D_COMPLETE)
+    setScreen(s.screen)
+  }
+
+  // ── Start Fresh ───────────────────────────────────────────────────────────────
+
+  const handleStartFresh = () => {
+    localStorage.removeItem(SAVE_KEY)
+    setSavedProgress(null)
+    setFormType('regular')
+    setFormTypeReason('first-time')
+    setFormTypeBack(S.FIRST_OR_RENEWAL)
+    setIsFirstTime(null)
+    setCurrentAQId(SECTION_A_START)
+    setAHistory([])
+    setAAnswers({})
+    setAReturnScreen(S.HOME)
+    setCurrentBQId(SECTION_B_START)
+    setBHistory([])
+    setBAnswers({})
+    setCurrentCQId(SECTION_C_START)
+    setCHistory([])
+    setCAnswers({})
+    setCurrentDQId(SECTION_D_START)
+    setDHistory([])
+    setDAnswers({})
+    setPassportStatus('renewing')
+    setEPassportNumber('')
+    setCurrentF1QId(SECTION_F_C1_START)
+    setF1History([])
+    setF1Answers({})
+    setCurrentF2QId(SECTION_F_C2_START)
+    setF2History([])
+    setF2Answers({})
+    setSectionDBack(S.SECTION_C_ROUTING)
+    setSectionEBack(S.SECTION_D_COMPLETE)
+    setScreen(S.WELCOME)
+  }
+
+  // Pre-selected declaration type for Section E
+  const ePreSelected = isFirstTime
+    ? 'first-time'
+    : passportStatus === 'renewing'
+      ? 'renewing'
+      : 'lost-stolen-damaged'
+
+  // ── Section A ───────────────────────────────────────────────────────────
+
+  const handleAAnswer = (questionId, value) => {
+    const newAnswers = { ...aAnswers, [questionId]: value }
+    setAAnswers(newAnswers)
+    const q = SECTION_A_QUESTIONS[questionId]
+    const nextId = q.next(value, newAnswers)
+    if (nextId === null) {
+      setScreen(S.SECTION_A_COMPLETE)
+    } else {
+      setAHistory((h) => [...h, questionId])
+      setCurrentAQId(nextId)
+    }
+  }
+
+  const handleABack = () => {
+    if (aHistory.length === 0) { setScreen(aReturnScreen); return }
+    const prevId = aHistory[aHistory.length - 1]
+    const newAnswers = { ...aAnswers }
+    delete newAnswers[currentAQId]
+    setAAnswers(newAnswers)
+    setAHistory((h) => h.slice(0, -1))
+    setCurrentAQId(prevId)
+  }
+
+  const handleSectionAComplete = () => {
+    const status = aAnswers.maritalStatus
+    if (status && status !== 'Single') {
+      setScreen(S.SECTION_B_INTRO)
+    } else {
+      setScreen(S.SECTION_C_ROUTING)
+    }
+  }
+
+  // ── Section B ───────────────────────────────────────────────────────────
+
+  const startSectionB = () => {
+    setCurrentBQId(SECTION_B_START)
+    setBHistory([])
+    setScreen(S.SECTION_B)
+  }
+
+  const handleBAnswer = (questionId, value) => {
+    const newAnswers = { ...bAnswers, [questionId]: value }
+    setBAnswers(newAnswers)
+    const q = SECTION_B_QUESTIONS[questionId]
+    const nextId = q.next(value, newAnswers)
+    if (nextId === null) {
+      setScreen(S.SECTION_B_COMPLETE)
+    } else {
+      setBHistory((h) => [...h, questionId])
+      setCurrentBQId(nextId)
+    }
+  }
+
+  const handleBBack = () => {
+    if (bHistory.length === 0) { setScreen(S.SECTION_B_INTRO); return }
+    const prevId = bHistory[bHistory.length - 1]
+    const newAnswers = { ...bAnswers }
+    delete newAnswers[currentBQId]
+    setBAnswers(newAnswers)
+    setBHistory((h) => h.slice(0, -1))
+    setCurrentBQId(prevId)
+  }
+
+  // ── Section C ───────────────────────────────────────────────────────────
+
+  const sectionCRoutingBack = () => {
+    const status = aAnswers.maritalStatus
+    if (status && status !== 'Single') {
+      setScreen(S.SECTION_B_COMPLETE)
+    } else {
+      setScreen(S.SECTION_A_COMPLETE)
+    }
+  }
+
+  const startSectionC = () => {
+    setCurrentCQId(SECTION_C_START)
+    setCHistory([])
+    setScreen(S.SECTION_C)
+  }
+
+  const handleCAnswer = (questionId, value) => {
+    const newAnswers = { ...cAnswers, [questionId]: value }
+    setCAnswers(newAnswers)
+    const q = SECTION_C_QUESTIONS[questionId]
+    const nextId = q.next(value, newAnswers)
+    if (nextId === null) {
+      setScreen(S.SECTION_C_SIG_NOTICE)
+    } else {
+      setCHistory((h) => [...h, questionId])
+      setCurrentCQId(nextId)
+    }
+  }
+
+  const handleCBack = () => {
+    if (cHistory.length === 0) { setScreen(S.SECTION_C_INTRO); return }
+    const prevId = cHistory[cHistory.length - 1]
+    const newAnswers = { ...cAnswers }
+    delete newAnswers[currentCQId]
+    setCAnswers(newAnswers)
+    setCHistory((h) => h.slice(0, -1))
+    setCurrentCQId(prevId)
+  }
+
+  // ── Section D ───────────────────────────────────────────────────────────
+
+  const startSectionD = (status) => {
+    setPassportStatus(status)
+    setCurrentDQId(SECTION_D_START)
+    setDHistory([])
+    setDAnswers({ dPassportStatus: status })
+    setScreen(S.SECTION_D)
+  }
+
+  const sectionDBaseCount = passportStatus === 'renewing' ? 3 : 7
+
+  const handleDAnswer = (questionId, value) => {
+    const newAnswers = { ...dAnswers, [questionId]: value }
+    setDAnswers(newAnswers)
+    const q = SECTION_D_QUESTIONS[questionId]
+    const nextId = q.next(value, newAnswers)
+
+    if (nextId === null) {
+      if (questionId === 'dDescriptionLostStolen' || questionId === 'dDescriptionDamaged') {
+        setScreen(S.SECTION_D_COMPLETE)
+      } else if (D_COMMON_IDS.has(questionId)) {
+        const status = passportStatus
+        if (status === 'lost' || status === 'stolen') {
+          setScreen(S.LOST_STOLEN_NOTICE)
+        } else if (status === 'damaged') {
+          setCurrentDQId('dWhereLostStolen')
+          setScreen(S.SECTION_D)
+        } else {
+          setScreen(S.SECTION_D_COMPLETE)
+        }
+      }
+    } else {
+      setDHistory((h) => [...h, questionId])
+      setCurrentDQId(nextId)
+    }
+  }
+
+  const handleDBack = () => {
+    if (dHistory.length === 0) { setScreen(S.SECTION_D_STATUS); return }
+    const prevId = dHistory[dHistory.length - 1]
+    const newAnswers = { ...dAnswers }
+    delete newAnswers[currentDQId]
+    setDAnswers(newAnswers)
+    setDHistory((h) => h.slice(0, -1))
+    setCurrentDQId(prevId)
+  }
+
+  // ── Section E ───────────────────────────────────────────────────────────
+
+  const handleEDeclarationSelect = (type) => {
+    if (type === 'renewing') {
+      setScreen(S.SECTION_E_PASSPORT)
+    } else {
+      setScreen(S.SECTION_E_SIG_NOTICE)
+    }
+  }
+
+  // ── Section F ───────────────────────────────────────────────────────────
+
+  const startSectionF = () => {
+    setCurrentF1QId(SECTION_F_C1_START)
+    setF1History([])
+    setF1Answers({})
+    setScreen(S.SECTION_F_CONTACT1)
+  }
+
+  const handleF1Answer = (questionId, value) => {
+    const newAnswers = { ...f1Answers, [questionId]: value }
+    setF1Answers(newAnswers)
+    const q = SECTION_F_C1_QUESTIONS[questionId]
+    const nextId = q.next(value, newAnswers)
+    if (nextId === null) {
+      setScreen(S.SECTION_F_TRANSITION)
+    } else {
+      setF1History((h) => [...h, questionId])
+      setCurrentF1QId(nextId)
+    }
+  }
+
+  const handleF1Back = () => {
+    if (f1History.length === 0) { setScreen(S.SECTION_F_INTRO); return }
+    const prevId = f1History[f1History.length - 1]
+    const newAnswers = { ...f1Answers }
+    delete newAnswers[currentF1QId]
+    setF1Answers(newAnswers)
+    setF1History((h) => h.slice(0, -1))
+    setCurrentF1QId(prevId)
+  }
+
+  const startContact2 = () => {
+    setCurrentF2QId(SECTION_F_C2_START)
+    setF2History([])
+    setF2Answers({})
+    setScreen(S.SECTION_F_CONTACT2)
+  }
+
+  const handleF2Answer = (questionId, value) => {
+    const newAnswers = { ...f2Answers, [questionId]: value }
+    setF2Answers(newAnswers)
+    const q = SECTION_F_C2_QUESTIONS[questionId]
+    const nextId = q.next(value, newAnswers)
+    if (nextId === null) {
+      setScreen(S.SECTION_F_COMPLETE)
+    } else {
+      setF2History((h) => [...h, questionId])
+      setCurrentF2QId(nextId)
+    }
+  }
+
+  const handleF2Back = () => {
+    if (f2History.length === 0) { setScreen(S.SECTION_F_TRANSITION); return }
+    const prevId = f2History[f2History.length - 1]
+    const newAnswers = { ...f2Answers }
+    delete newAnswers[currentF2QId]
+    setF2Answers(newAnswers)
+    setF2History((h) => h.slice(0, -1))
+    setCurrentF2QId(prevId)
+  }
+
+  // ── TRN ──────────────────────────────────────────────────────────────────
+
+  const handleTRNAnswer = (questionId, value) => {
+    const newAnswers = { ...trnAnswers, [questionId]: value }
+    setTrnAnswers(newAnswers)
+    const q = TRN_QUESTIONS[questionId]
+    const nextId = q.next(value, newAnswers)
+    if (nextId === null) {
+      setScreen(S.TRN_REVIEW)
+    } else {
+      const newHistory = [...trnHistory, questionId]
+      setTrnHistory(newHistory)
+      setTrnQId(nextId)
+      // Save progress so user can resume if they leave the app
+      try {
+        const snap = { currentStep: nextId, answers: newAnswers, history: newHistory }
+        localStorage.setItem(TRN_SAVE_KEY, JSON.stringify(snap))
+        setSavedTRNProgress(snap)
+      } catch {}
+    }
+  }
+
+  const handleTRNResume = () => {
+    if (!savedTRNProgress) return
+    setTrnQId(savedTRNProgress.currentStep || TRN_START)
+    setTrnAnswers(savedTRNProgress.answers || {})
+    setTrnHistory(savedTRNProgress.history || [])
+    setScreen(S.TRN_FLOW)
+  }
+
+  const handleTRNBack = () => {
+    if (trnHistory.length === 0) { setScreen(S.TRN_WELCOME); return }
+    const prevId = trnHistory[trnHistory.length - 1]
+    const newAnswers = { ...trnAnswers }
+    delete newAnswers[trnQId]
+    setTrnAnswers(newAnswers)
+    setTrnHistory((h) => h.slice(0, -1))
+    setTrnQId(prevId)
+  }
+
+  // ── NIS ──────────────────────────────────────────────────────────────────
+
+  const handleNISTestGenerate = () => {
+    import('./utils/nisPdfGenerator').then(({ generateNISPDF }) =>
+      generateNISPDF(NIS_TEST_DATA)
+        .then(url => { setNisPdfUrl(url); setScreen(S.NIS_FORM_READY) })
+        .catch(err => console.error('[NIS test] PDF failed:', err))
+    )
+  }
+
+  const handleNISAnswer = (_questionId, value) => {
+    if (NIS_TEST_MODE) {
+      // Use nisQId from state (not the arg, which may be undefined) to track position
+      const newAnswers = { ...nisAnswers, [nisQId]: value }
+      setNisAnswers(newAnswers)
+      const idx = NIS_TEST_SEQUENCE.indexOf(nisQId)
+      const nextId = idx < NIS_TEST_SEQUENCE.length - 1 ? NIS_TEST_SEQUENCE[idx + 1] : null
+      if (nextId === null) {
+        import('./utils/nisPdfGenerator').then(({ generateNISPDF }) =>
+          generateNISPDF(newAnswers)
+            .then(url => { setNisPdfUrl(url); setScreen(S.NIS_FORM_READY) })
+            .catch(err => console.error('[NIS test] PDF failed:', err))
+        )
+      } else {
+        setNisHistory(h => [...h, nisQId])
+        setNisQId(nextId)
+      }
+      return
+    }
+
+    // ── Normal flow ────────────────────────────────────────────────────────
+    const questionId = _questionId
+    const newAnswers = { ...nisAnswers, [questionId]: value }
+    setNisAnswers(newAnswers)
+    const q = NIS_QUESTIONS[questionId]
+    const nextId = q.next(value, newAnswers)
+    if (nextId === null) {
+      import('./utils/nisPdfGenerator').then(({ generateNISPDF }) =>
+        generateNISPDF(newAnswers).then((url) => {
+          try { localStorage.removeItem(NIS_SAVE_KEY) } catch {}
+          setSavedNISProgress(null)
+          const entry = {
+            name: 'NIS Registration',
+            completedAt: Date.now(),
+            applicantName: [newAnswers.firstName, newAnswers.lastName].filter(Boolean).join(' '),
+          }
+          const updated = [entry, ...completedForms]
+          setCompletedForms(updated)
+          try { localStorage.setItem(HISTORY_KEY, JSON.stringify(updated)) } catch {}
+          setNisPdfUrl(url)
+          setScreen(S.NIS_FORM_READY)
+        }).catch(err => console.error('[NIS] PDF generation failed:', err))
+      )
+    } else {
+      const newHistory = [...nisHistory, questionId]
+      setNisHistory(newHistory)
+      setNisQId(nextId)
+      try {
+        const snap = { currentStep: nextId, answers: newAnswers, history: newHistory }
+        localStorage.setItem(NIS_SAVE_KEY, JSON.stringify(snap))
+        setSavedNISProgress(snap)
+      } catch {}
+    }
+  }
+
+  const handleNISResume = () => {
+    if (!savedNISProgress) return
+    setNisQId(savedNISProgress.currentStep || NIS_START)
+    setNisAnswers(savedNISProgress.answers || {})
+    setNisHistory(savedNISProgress.history || [])
+    setScreen(S.NIS_FLOW)
+  }
+
+  const handleNISBack = () => {
+    if (nisHistory.length === 0) { setScreen(S.NIS_WELCOME); return }
+    const prevId = nisHistory[nisHistory.length - 1]
+    const newAnswers = { ...nisAnswers }
+    delete newAnswers[nisQId]
+    setNisAnswers(newAnswers)
+    setNisHistory((h) => h.slice(0, -1))
+    setNisQId(prevId)
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────
+
+  switch (screen) {
+
+    case S.WELCOME:
+      return (
+        <WelcomeScreen
+          onStart={() => setScreen(S.FIRST_OR_RENEWAL)}
+          onBack={goHome}
+        />
+      )
+
+    case S.FIRST_OR_RENEWAL:
+      return (
+        <RoutingScreen
+          question="Have you had a Jamaican passport before?"
+          buttons={[
+            { label: 'Yes, I have had one before', value: 'yes' },
+            { label: 'No, this is my first passport', value: 'no' },
+          ]}
+          onSelect={(val) =>
+            val === 'no'
+              ? goFormTypeExplain('regular', 'first-time', S.FIRST_OR_RENEWAL, true)
+              : setScreen(S.RENEWAL_AGE)
+          }
+          onBack={() => setScreen(S.WELCOME)}
+        />
+      )
+
+    case S.RENEWAL_AGE:
+      return (
+        <RoutingScreen
+          question="When your last passport was issued, were you 18 years old or older?"
+          buttons={[
+            { label: 'Yes, I was 18 or older', value: 'yes' },
+            { label: 'No, I was younger than 18', value: 'no' },
+          ]}
+          onSelect={(val) =>
+            val === 'no'
+              ? goFormTypeExplain('regular', 'was-minor', S.RENEWAL_AGE, false)
+              : setScreen(S.RENEWAL_NAME)
+          }
+          onBack={() => setScreen(S.FIRST_OR_RENEWAL)}
+        />
+      )
+
+    case S.RENEWAL_NAME:
+      return (
+        <RoutingScreen
+          question="Since your last passport, have you changed your name or marital status?"
+          buttons={[
+            { label: 'Yes, something changed', value: 'yes' },
+            { label: 'No, everything is the same', value: 'no' },
+          ]}
+          onSelect={(val) =>
+            val === 'yes'
+              ? goFormTypeExplain('regular', 'name-changed', S.RENEWAL_NAME, false)
+              : goFormTypeExplain('simplified', 'qualifies-simplified', S.RENEWAL_NAME, false)
+          }
+          onBack={() => setScreen(S.RENEWAL_AGE)}
+        />
+      )
+
+    case S.FORM_TYPE_EXPLAIN:
+      return (
+        <FormTypeScreen
+          qualifiesSimplified={formType === 'simplified'}
+          reason={formTypeReason}
+          onSelect={(type) => {
+            setFormType(type)
+            startSectionA(S.FORM_TYPE_EXPLAIN)
+          }}
+          onBack={() => setScreen(formTypeBackScreen)}
+        />
+      )
+
+    case S.SECTION_A:
+      return (
+        <QuestionScreen
+          questionId={currentAQId}
+          questions={SECTION_A_QUESTIONS}
+          baseCount={SECTION_A_BASE_COUNT}
+          onAnswer={handleAAnswer}
+          onBack={handleABack}
+          onHome={goHome}
+          answers={aAnswers}
+        />
+      )
+
+    case S.SECTION_A_COMPLETE:
+      return <SectionACompleteScreen onContinue={handleSectionAComplete} />
+
+    case S.SECTION_B_INTRO:
+      return (
+        <SectionBIntroScreen
+          onContinue={startSectionB}
+          onBack={() => setScreen(S.SECTION_A_COMPLETE)}
+        />
+      )
+
+    case S.SECTION_B:
+      return (
+        <QuestionScreen
+          questionId={currentBQId}
+          questions={SECTION_B_QUESTIONS}
+          baseCount={SECTION_B_BASE_COUNT}
+          onAnswer={handleBAnswer}
+          onBack={handleBBack}
+          onHome={goHome}
+          answers={bAnswers}
+        />
+      )
+
+    case S.SECTION_B_COMPLETE:
+      return <SectionBCompleteScreen onContinue={() => setScreen(S.SECTION_C_ROUTING)} />
+
+    case S.SECTION_C_ROUTING:
+      return (
+        <RoutingScreen
+          question="Is this passport application for someone under 18 years old?"
+          buttons={[
+            { label: 'Yes', value: 'yes' },
+            { label: 'No', value: 'no' },
+          ]}
+          onSelect={(val) =>
+            val === 'yes'
+              ? setScreen(S.PAGE2_SIG_NOTICE)
+              : afterSectionC(S.SECTION_C_ROUTING)
+          }
+          onBack={sectionCRoutingBack}
+        />
+      )
+
+    case S.PAGE2_SIG_NOTICE:
+      return (
+        <NoticeScreen
+          speechText={PAGE2_SIG_SPEECH}
+          title="Important — Do Not Sign at Home"
+          lines={PAGE2_SIG_LINES}
+          buttonLabel="Got it"
+          onContinue={() => setScreen(S.SECTION_C_INTRO)}
+          onBack={() => setScreen(S.SECTION_C_ROUTING)}
+        />
+      )
+
+    case S.SECTION_C_INTRO:
+      return (
+        <SectionCIntroScreen
+          onContinue={startSectionC}
+          onBack={() => setScreen(S.PAGE2_SIG_NOTICE)}
+        />
+      )
+
+    case S.SECTION_C:
+      return (
+        <QuestionScreen
+          questionId={currentCQId}
+          questions={SECTION_C_QUESTIONS}
+          baseCount={SECTION_C_BASE_COUNT}
+          onAnswer={handleCAnswer}
+          onBack={handleCBack}
+          onHome={goHome}
+          answers={cAnswers}
+        />
+      )
+
+    case S.SECTION_C_SIG_NOTICE:
+      return (
+        <NoticeScreen
+          speechText={C_SIG_SPEECH}
+          title="Important — Signature Rules for Section C"
+          lines={C_SIG_LINES}
+          buttonLabel="Got it, I understand"
+          onContinue={() => setScreen(S.SECTION_C_COMPLETE)}
+        />
+      )
+
+    case S.SECTION_C_COMPLETE:
+      return (
+        <SectionCCompleteScreen onContinue={() => afterSectionC(S.SECTION_C_COMPLETE)} />
+      )
+
+    case S.SECTION_D_INTRO:
+      return (
+        <SectionDIntroScreen
+          onContinue={() => setScreen(S.SECTION_D_STATUS)}
+          onBack={() => setScreen(sectionDBack)}
+        />
+      )
+
+    case S.SECTION_D_STATUS:
+      return (
+        <RoutingScreen
+          question="What is the current status of your passport?"
+          buttons={[
+            { label: 'I am renewing it — I have it with me', value: 'renewing' },
+            { label: 'It is lost',                           value: 'lost'     },
+            { label: 'It was stolen',                        value: 'stolen'   },
+            { label: 'It is damaged or destroyed',           value: 'damaged'  },
+          ]}
+          onSelect={(val) => startSectionD(val)}
+          onBack={() => setScreen(S.SECTION_D_INTRO)}
+        />
+      )
+
+    case S.SECTION_D:
+      return (
+        <QuestionScreen
+          questionId={currentDQId}
+          questions={SECTION_D_QUESTIONS}
+          baseCount={sectionDBaseCount}
+          onAnswer={handleDAnswer}
+          onBack={handleDBack}
+          onHome={goHome}
+          answers={dAnswers}
+        />
+      )
+
+    case S.LOST_STOLEN_NOTICE:
+      return (
+        <NoticeScreen
+          speechText={LOST_STOLEN_SPEECH}
+          title="Important — Report Required Before You Submit"
+          lines={LOST_STOLEN_LINES}
+          buttonLabel="Got it"
+          onContinue={() => {
+            setCurrentDQId('dWhereLostStolen')
+            setScreen(S.SECTION_D)
+          }}
+        />
+      )
+
+    case S.SECTION_D_COMPLETE:
+      return (
+        <SectionDCompleteScreen
+          onContinue={() => goSectionEIntro(S.SECTION_D_COMPLETE)}
+        />
+      )
+
+    // ── Section E ──────────────────────────────────────────────────────
+
+    case S.SECTION_E_INTRO:
+      return (
+        <SectionEIntroScreen
+          onContinue={() => setScreen(S.SECTION_E_DECLARATION)}
+          onBack={() => setScreen(sectionEBack)}
+        />
+      )
+
+    case S.SECTION_E_DECLARATION:
+      return (
+        <SectionEDeclarationScreen
+          preSelected={ePreSelected}
+          onSelect={handleEDeclarationSelect}
+          onBack={() => setScreen(S.SECTION_E_INTRO)}
+        />
+      )
+
+    case S.SECTION_E_PASSPORT:
+      return (
+        <SectionEPassportNumScreen
+          onConfirm={(num) => {
+            setEPassportNumber(num)
+            setScreen(S.SECTION_E_SIG_NOTICE)
+          }}
+          onBack={() => setScreen(S.SECTION_E_DECLARATION)}
+        />
+      )
+
+    case S.SECTION_E_SIG_NOTICE:
+      return (
+        <NoticeScreen
+          speechText={E_SIG_SPEECH}
+          title="Important — Signature Must Match Every Time"
+          lines={E_SIG_LINES}
+          buttonLabel="Got it"
+          onContinue={() => setScreen(S.SECTION_E_COMPLETE)}
+          onBack={() =>
+            ePassportNumber
+              ? setScreen(S.SECTION_E_PASSPORT)
+              : setScreen(S.SECTION_E_DECLARATION)
+          }
+        />
+      )
+
+    case S.SECTION_E_COMPLETE:
+      return (
+        <SectionECompleteScreen
+          onContinue={() => setScreen(S.SECTION_F_INTRO)}
+        />
+      )
+
+    // ── Section F ──────────────────────────────────────────────────────
+
+    case S.SECTION_F_INTRO:
+      return (
+        <SectionFIntroScreen
+          onContinue={startSectionF}
+          onBack={() => setScreen(S.SECTION_E_COMPLETE)}
+        />
+      )
+
+    case S.SECTION_F_CONTACT1:
+      return (
+        <QuestionScreen
+          questionId={currentF1QId}
+          questions={SECTION_F_C1_QUESTIONS}
+          baseCount={SECTION_F_BASE_COUNT}
+          onAnswer={handleF1Answer}
+          onBack={handleF1Back}
+          onHome={goHome}
+          answers={f1Answers}
+        />
+      )
+
+    case S.SECTION_F_TRANSITION:
+      return (
+        <SectionFTransitionScreen
+          onContinue={startContact2}
+        />
+      )
+
+    case S.SECTION_F_CONTACT2:
+      return (
+        <QuestionScreen
+          questionId={currentF2QId}
+          questions={SECTION_F_C2_QUESTIONS}
+          baseCount={SECTION_F_BASE_COUNT}
+          onAnswer={handleF2Answer}
+          onBack={handleF2Back}
+          onHome={goHome}
+          answers={f2Answers}
+        />
+      )
+
+    case S.SECTION_F_COMPLETE:
+      return (
+        <SectionFCompleteScreen
+          onContinue={() => setScreen(S.SECTION_G)}
+        />
+      )
+
+    // ── Section G ──────────────────────────────────────────────────────
+
+    case S.SECTION_G:
+      return (
+        <SectionGScreen
+          onComplete={() => setScreen(S.FINAL_COMPLETE)}
+          onBack={() => setScreen(S.SECTION_F_COMPLETE)}
+        />
+      )
+
+    case S.FINAL_COMPLETE:
+      return (
+        <FinalCompleteScreen
+          onReview={() => setScreen(S.ANSWERS_SUMMARY)}
+          onFormReady={(url) => {
+            const entry = {
+              name: 'Jamaica Passport Application',
+              completedAt: Date.now(),
+              applicantName: [aAnswers.firstName, aAnswers.surname].filter(Boolean).join(' '),
+            }
+            const updated = [entry, ...completedForms]
+            setCompletedForms(updated)
+            try { localStorage.setItem(HISTORY_KEY, JSON.stringify(updated)) } catch {}
+            localStorage.removeItem(SAVE_KEY)
+            setSavedProgress(null)
+            setPdfUrl(url)
+            setScreen(S.FORM_READY)
+          }}
+          allAnswers={{
+            aAnswers,
+            bAnswers,
+            cAnswers,
+            dAnswers,
+            ePassportNumber,
+            isFirstTime,
+            passportStatus,
+            f1Answers,
+            f2Answers,
+          }}
+        />
+      )
+
+    case S.FORM_READY:
+      return (
+        <FormReadyScreen
+          pdfUrl={pdfUrl}
+          onBack={() => setScreen(S.FINAL_COMPLETE)}
+        />
+      )
+
+    case S.ANSWERS_SUMMARY:
+      return (
+        <AnswersSummaryScreen
+          aAnswers={aAnswers}
+          bAnswers={bAnswers}
+          cAnswers={cAnswers}
+          dAnswers={dAnswers}
+          ePassportNumber={ePassportNumber}
+          f1Answers={f1Answers}
+          f2Answers={f2Answers}
+          onBack={() => setScreen(S.FINAL_COMPLETE)}
+        />
+      )
+
+    // ── TRN ───────────────────────────────────────────────────────────
+
+    case S.TRN_WELCOME:
+      return (
+        <TRNWelcomeScreen
+          onStart={() => {
+            // Clear any saved progress and start fresh
+            try { localStorage.removeItem(TRN_SAVE_KEY) } catch {}
+            setSavedTRNProgress(null)
+            setTrnQId(TRN_START)
+            setTrnHistory([])
+            setTrnAnswers({})
+            setScreen(S.TRN_FLOW)
+          }}
+          onBack={goHome}
+          onResume={savedTRNProgress ? handleTRNResume : null}
+        />
+      )
+
+    case S.TRN_FLOW:
+      return (
+        <QuestionScreen
+          questionId={trnQId}
+          questions={TRN_QUESTIONS}
+          baseCount={TRN_BASE_COUNT}
+          onAnswer={handleTRNAnswer}
+          onBack={handleTRNBack}
+          onHome={goHome}
+          answers={trnAnswers}
+        />
+      )
+
+    case S.TRN_REVIEW:
+      return (
+        <TRNReviewScreen
+          trnAnswers={trnAnswers}
+          onBack={() => setScreen(S.TRN_FLOW)}
+          onFormReady={(url) => {
+            // PDF generated — clear saved TRN progress
+            try { localStorage.removeItem(TRN_SAVE_KEY) } catch {}
+            setSavedTRNProgress(null)
+            const entry = {
+              name: 'TRN Application',
+              completedAt: Date.now(),
+              applicantName: [trnAnswers.firstName, trnAnswers.lastName].filter(Boolean).join(' '),
+            }
+            const updated = [entry, ...completedForms]
+            setCompletedForms(updated)
+            try { localStorage.setItem(HISTORY_KEY, JSON.stringify(updated)) } catch {}
+            setTrnPdfUrl(url)
+            setScreen(S.TRN_FORM_READY)
+          }}
+        />
+      )
+
+    case S.TRN_FORM_READY:
+      return (
+        <TRNFormReadyScreen
+          pdfUrl={trnPdfUrl}
+          onBack={() => setScreen(S.TRN_REVIEW)}
+        />
+      )
+
+    // ── NIS ───────────────────────────────────────────────────────────
+
+    case S.NIS_WELCOME:
+      return (
+        <NISWelcomeScreen
+          onStart={() => {
+            try { localStorage.removeItem(NIS_SAVE_KEY) } catch {}
+            setSavedNISProgress(null)
+            setNisQId(NIS_START)
+            setNisHistory([])
+            setNisAnswers({})
+            setScreen(S.NIS_FLOW)
+          }}
+          onBack={goHome}
+          onResume={savedNISProgress ? handleNISResume : null}
+        />
+      )
+
+    case S.NIS_FLOW:
+      return (
+        <QuestionScreen
+          questionId={nisQId}
+          questions={NIS_TEST_MODE ? NIS_TEST_QUESTIONS : NIS_QUESTIONS}
+          baseCount={NIS_TEST_MODE ? 3 : NIS_BASE_COUNT}
+          onAnswer={handleNISAnswer}
+          onBack={handleNISBack}
+          onHome={goHome}
+          answers={nisAnswers}
+        />
+      )
+
+    case S.NIS_FORM_READY:
+      return (
+        <NISFormReadyScreen
+          pdfUrl={nisPdfUrl}
+          onBack={goHome}
+        />
+      )
+
+    // ── Home ──────────────────────────────────────────────────────────
+    default: {
+      const prog = savedProgress ? computeProgress(savedProgress) : null
+      return (
+        <div className="flex flex-col" style={{ minHeight: '100svh' }}>
+          <TopNavBar />
+          <main className="flex-1 overflow-y-auto bg-white">
+            {activeTab === 'home' && (
+              <>
+                <HeroSection onGetStarted={() => setScreen(S.WELCOME)} />
+                {savedProgress && (
+                  <WelcomeBackCard
+                    progressLabel={prog.label}
+                    progressPct={prog.pct}
+                    stepNum={prog.stepNum}
+                    stepOf={prog.stepOf}
+                    savedAtLabel={formatSavedAt(savedProgress.savedAt)}
+                    onResume={handleResume}
+                    onStartFresh={handleStartFresh}
+                  />
+                )}
+                <FormPicker
+                  onSelect={(formId) => {
+                    if (formId === 'passport') setScreen(S.WELCOME)
+                    else if (formId === 'trn') setScreen(S.TRN_WELCOME)
+                    else if (formId === 'nis') setScreen(S.NIS_WELCOME)
+                  }}
+                />
+                <div className="h-4" />
+              </>
+            )}
+            {activeTab === 'wallet'  && <WalletScreen />}
+            {activeTab === 'history' && <HistoryScreen completedForms={completedForms} />}
+            {activeTab === 'profile' && <ProfileScreen />}
+          </main>
+          <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
+        </div>
+      )
+    }
+  }
+}

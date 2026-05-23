@@ -1,0 +1,132 @@
+import { useEffect, useMemo } from 'react'
+import { useSpeech } from '../hooks/useSpeech'
+
+const COMPLETE_MSG =
+  'You have completed the sixth section! One more section to go and you are done. You should be very proud of yourself.'
+
+const COLORS = ['#16a34a', '#ffd700', '#ff6b6b', '#4ecdc4', '#22c55e', '#f97316', '#a78bfa']
+
+function useParticles() {
+  return useMemo(
+    () =>
+      Array.from({ length: 45 }, (_, i) => ({
+        id: i,
+        x: 2 + (i / 45) * 96,
+        color: COLORS[i % COLORS.length],
+        delay: (i % 9) * 0.2,
+        duration: 2.2 + (i % 5) * 0.35,
+        size: 6 + (i % 6) * 2.5,
+        isCircle: i % 3 === 0,
+        drift: ((i % 7) - 3) * 30,
+      })),
+    [],
+  )
+}
+
+export default function SectionFCompleteScreen({ onContinue }) {
+  const { speak, stopSpeaking } = useSpeech()
+  const particles = useParticles()
+
+  useEffect(() => {
+    const timer = setTimeout(() => speak(COMPLETE_MSG), 400)
+    return () => {
+      clearTimeout(timer)
+      stopSpeaking()
+    }
+  }, [])
+
+  return (
+    <div className="flex flex-col min-h-screen bg-white overflow-hidden relative">
+      {/* Confetti */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        {particles.map((p) => (
+          <div
+            key={p.id}
+            className="confetti-particle absolute"
+            style={{
+              left: `${p.x}%`,
+              top: '-20px',
+              width: p.size,
+              height: p.size,
+              background: p.color,
+              borderRadius: p.isCircle ? '50%' : '3px',
+              animationDelay: `${p.delay}s`,
+              animationDuration: `${p.duration}s`,
+              '--drift': `${p.drift}px`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-10">
+
+        <div
+          className="w-28 h-28 rounded-full flex items-center justify-center mb-6 shadow-lg"
+          style={{ background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)' }}
+        >
+          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+
+        <h1 className="text-black font-bold text-3xl text-center leading-tight mb-3">
+          Section F Complete!
+        </h1>
+
+        <p className="text-gray-500 text-lg text-center leading-relaxed mb-2 px-2">
+          One more section to go.
+        </p>
+        <p className="text-gray-500 text-lg text-center leading-relaxed mb-10 px-2">
+          <strong className="text-black">You should be very proud of yourself!</strong>
+        </p>
+
+        {/* Summary badge */}
+        <div
+          className="w-full rounded-2xl px-5 py-4 mb-8 flex items-center gap-3"
+          style={{ background: '#fff1f2' }}
+        >
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: '#e11d48' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 11l3 3L22 4" />
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-black font-bold text-sm">Section F — Emergency Contacts</p>
+            <p className="text-gray-400 text-xs mt-0.5">Both contacts recorded ✓</p>
+          </div>
+        </div>
+
+        {/* Section G warning note */}
+        <div
+          className="w-full rounded-2xl px-5 py-4 mb-6 flex items-start gap-3"
+          style={{ background: '#fffbeb', border: '1.5px solid #fcd34d' }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 mt-0.5" stroke="#b45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <div>
+            <p className="font-bold text-sm mb-1" style={{ color: '#92400e' }}>About Section G</p>
+            <p className="text-sm leading-relaxed" style={{ color: '#78350f' }}>
+              Section G will be blank on your generated form. That section must be completed and signed by a certifying official after you print the form.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={onContinue}
+          className="w-full py-4 rounded-2xl font-bold text-white text-lg shadow-md active:opacity-80 transition-opacity"
+          style={{ background: '#16a34a' }}
+        >
+          Continue →
+        </button>
+      </div>
+    </div>
+  )
+}

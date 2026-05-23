@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "FillFormEZ",
+    "slug": "fillformez",
+    "version": "1.0.0",
+    "platforms": ["web"],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
+  }
+}

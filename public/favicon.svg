@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Green rounded square background -->
+  <rect width="32" height="32" rx="6" fill="#16a34a"/>
+  <!-- Subtle inner shadow / depth -->
+  <rect width="32" height="32" rx="6" fill="url(#grad)" opacity="0.25"/>
+  <!-- EZ text — bold, white, centered -->
+  <text
+    x="16"
+    y="23"
+    text-anchor="middle"
+    font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+    font-weight="900"
+    font-size="18"
+    fill="white"
+    letter-spacing="-0.5"
+  >EZ</text>
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="white"/>
+      <stop offset="1" stop-color="#0d3b1e"/>
+    </linearGradient>
+  </defs>
+</svg>
