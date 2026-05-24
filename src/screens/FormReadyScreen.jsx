@@ -1,18 +1,17 @@
 import { useEffect } from 'react'
 import { useSpeech } from '../hooks/useSpeech'
-import { FORM_READY_HEADLINE, FORM_READY_NOTE } from '../utils/messages'
 
 const READY_SPEECH =
   'Your passport form is ready! Please look it over carefully before you print. Then get it certified by your certifying official and bring it to the PICA office with all your supporting documents. You are almost there — good luck!'
 
 const WHAT_TO_BRING = [
-  { text: 'Completed application form (this one)',        icon: '📋', always: true  },
-  { text: 'Two passport-size photos',                     icon: '📷', always: true  },
-  { text: 'Birth certificate or proof of citizenship',    icon: '📄', always: true  },
-  { text: 'Valid photo ID',                               icon: '🪪', always: true  },
-  { text: 'Marriage certificate (if applicable)',         icon: '💍', always: false },
-  { text: 'Police report (if passport was lost/stolen)',  icon: '🚔', always: false },
-  { text: 'Previous passport (if renewing)',              icon: '📒', always: false },
+  { text: 'Completed application form (this one)',        always: true  },
+  { text: 'Two passport-size photos',                     always: true  },
+  { text: 'Birth certificate or proof of citizenship',    always: true  },
+  { text: 'Valid photo ID',                               always: true  },
+  { text: 'Marriage certificate (if applicable)',         always: false },
+  { text: 'Police report (if passport was lost/stolen)',  always: false },
+  { text: 'Previous passport (if renewing)',              always: false },
 ]
 
 function ChevronLeft() {
@@ -32,7 +31,7 @@ function SpeakerIcon() {
   )
 }
 
-export default function FormReadyScreen({ pdfUrl, onBack }) {
+export default function FormReadyScreen({ pdfUrl, onBack, onViewHistory, onStartAnother, onHome }) {
   const { speak, stopSpeaking } = useSpeech()
 
   useEffect(() => {
@@ -79,31 +78,29 @@ export default function FormReadyScreen({ pdfUrl, onBack }) {
 
       <div className="flex-1 flex flex-col px-5 pt-8 pb-10 overflow-y-auto">
 
-        {/* Success icon */}
+        {/* Big success checkmark */}
         <div className="flex justify-center mb-5">
           <div
-            className="w-20 h-20 rounded-full flex items-center justify-center shadow-md"
+            className="w-24 h-24 rounded-full flex items-center justify-center shadow-xl"
             style={{ background: 'linear-gradient(135deg, #16a34a 0%, #0d3b1e 100%)' }}
           >
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <polyline points="9 13 11 15 15 11" />
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
         </div>
 
         <h2 className="text-black font-bold text-2xl text-center leading-snug mb-2">
-          {FORM_READY_HEADLINE}
+          Your form is ready!
         </h2>
-        <p className="text-gray-500 text-sm text-center leading-relaxed mb-7 px-2">
-          {FORM_READY_NOTE}
+        <p className="text-gray-500 text-sm text-center leading-relaxed mb-6 px-2">
+          Great job. Your form has been completed and is ready to download, print, or review.
         </p>
 
-        {/* Download button */}
+        {/* Download / Open PDF — same behavior as before */}
         <button
           onClick={handleDownload}
-          className="w-full py-4 rounded-2xl font-bold text-white text-base shadow-md active:opacity-80 transition-opacity flex items-center justify-center gap-2 mb-7"
+          className="w-full py-4 rounded-2xl font-bold text-white text-base shadow-md active:opacity-80 transition-opacity flex items-center justify-center gap-2 mb-4"
           style={{ background: '#16a34a' }}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -111,8 +108,56 @@ export default function FormReadyScreen({ pdfUrl, onBack }) {
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-          Download My Completed Passport Form
+          Download / Open PDF
         </button>
+
+        {/* Reminder */}
+        <div
+          className="w-full rounded-2xl px-4 py-3.5 flex items-start gap-3 mb-5"
+          style={{ background: '#fffbeb', border: '1.5px solid #fcd34d' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+          </svg>
+          <p className="text-sm leading-relaxed" style={{ color: '#92400e' }}>
+            Remember to print and sign any required sections before submitting.
+          </p>
+        </div>
+
+        {/* Navigation actions */}
+        <div className="w-full flex flex-col gap-3 mb-8">
+          <button
+            onClick={onViewHistory}
+            className="w-full py-4 rounded-2xl font-bold text-base border-2 flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+            style={{ borderColor: '#0d1b38', color: '#0d1b38', background: 'white' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d1b38" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 3" strokeLinecap="round" />
+            </svg>
+            View History
+          </button>
+
+          <button
+            onClick={onStartAnother}
+            className="w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-2 active:opacity-80 transition-opacity"
+            style={{ background: '#0d1b38', color: 'white' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Start Another Form
+          </button>
+
+          <button
+            onClick={onHome}
+            className="w-full py-2 font-semibold text-sm text-center active:opacity-60 transition-opacity"
+            style={{ color: '#6b7280' }}
+          >
+            Back to Home
+          </button>
+        </div>
 
         {/* What to bring checklist */}
         <div
@@ -138,7 +183,7 @@ export default function FormReadyScreen({ pdfUrl, onBack }) {
             ))}
           </div>
           <p className="text-xs text-gray-400 mt-4 leading-relaxed">
-            Blue items are required for everyone. Grey items apply depending on your situation.
+            Green items are required for everyone. Grey items apply depending on your situation.
           </p>
         </div>
       </div>

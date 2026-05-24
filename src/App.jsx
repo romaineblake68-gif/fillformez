@@ -1386,6 +1386,9 @@ export default function App() {
         <FormReadyScreen
           pdfUrl={pdfUrl}
           onBack={() => setScreen(S.FINAL_COMPLETE)}
+          onViewHistory={() => { setScreen(S.HOME); setActiveTab('history') }}
+          onStartAnother={goHome}
+          onHome={goHome}
         />
       )
 
@@ -1468,6 +1471,9 @@ export default function App() {
         <TRNFormReadyScreen
           pdfUrl={trnPdfUrl}
           onBack={() => setScreen(S.TRN_REVIEW)}
+          onViewHistory={() => { setScreen(S.HOME); setActiveTab('history') }}
+          onStartAnother={goHome}
+          onHome={goHome}
         />
       )
 
@@ -1513,6 +1519,9 @@ export default function App() {
         <NISFormReadyScreen
           pdfUrl={nisPdfUrl}
           onBack={goHome}
+          onViewHistory={() => { setScreen(S.HOME); setActiveTab('history') }}
+          onStartAnother={goHome}
+          onHome={goHome}
         />
       )
 
