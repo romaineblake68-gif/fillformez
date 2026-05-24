@@ -1,3 +1,105 @@
+import { useState } from 'react'
+
+// ── How It Works modal ────────────────────────────────────────────────────────
+
+const HOW_IT_WORKS = [
+  {
+    heading: 'Speak or type your answers',
+    body: 'Each question appears one at a time. You can tap the microphone and say your answer, or type it yourself.',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" strokeWidth="2" fill="none" />
+        <line x1="12" y1="19" x2="12" y2="23" />
+        <line x1="8" y1="23" x2="16" y2="23" />
+      </svg>
+    ),
+  },
+  {
+    heading: 'Check your answers before printing',
+    body: 'After every answer you get a chance to confirm it or change it. Nothing is saved until you say it is correct.',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="9 11 12 14 22 4" />
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      </svg>
+    ),
+  },
+  {
+    heading: 'FillFormEZ does not submit forms online',
+    body: 'When you finish, you print or download the completed form and take it to the office yourself. FillFormEZ does not send it anywhere.',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 9 6 2 18 2 18 9" />
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+        <rect x="6" y="14" width="12" height="8" />
+      </svg>
+    ),
+  },
+  {
+    heading: 'Your progress is saved automatically',
+    body: 'If you stop halfway, your answers are saved on your phone. Come back anytime and continue from where you left off.',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+        <polyline points="17 21 17 13 7 13 7 21" />
+        <polyline points="7 3 7 8 15 8" />
+      </svg>
+    ),
+  },
+]
+
+function HowItWorksModal({ onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: 'rgba(13,27,56,0.5)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full rounded-t-3xl px-6 pt-5 pb-10 bg-white overflow-y-auto"
+        style={{ maxWidth: 430, maxHeight: '85dvh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div className="w-10 h-1.5 rounded-full mx-auto mb-5 bg-gray-200" />
+
+        <h2 className="font-bold text-xl mb-1" style={{ color: '#0d1b38' }}>How FillFormEZ works</h2>
+        <p className="text-sm text-gray-400 mb-5">Simple. Private. Step by step.</p>
+
+        <div className="flex flex-col gap-4 mb-7">
+          {HOW_IT_WORKS.map((item) => (
+            <div
+              key={item.heading}
+              className="flex items-start gap-4 px-4 py-4 rounded-2xl"
+              style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ background: 'white' }}
+              >
+                {item.icon}
+              </div>
+              <div>
+                <p className="font-bold text-sm text-black leading-snug">{item.heading}</p>
+                <p className="text-gray-500 text-sm mt-0.5 leading-snug">{item.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full py-4 rounded-2xl font-bold text-white text-base active:opacity-80"
+          style={{ background: '#16a34a' }}
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  )
+}
+
 const DIFFICULTY = {
   Easy:   { bg: '#dcfce7', color: '#15803d' },
   Medium: { bg: '#fef9c3', color: '#854d0e' },
@@ -104,12 +206,36 @@ const BENEFITS = [
 ]
 
 export default function FormPicker({ onSelect }) {
+  const [showHowItWorks, setShowHowItWorks] = useState(false)
+
   return (
     <>
+      {showHowItWorks && <HowItWorksModal onClose={() => setShowHowItWorks(false)} />}
+
       {/* ── Available Forms ──────────────────────────────────────────── */}
       <section id="home-forms" className="px-4 pt-7 pb-2">
-        <h2 className="text-black font-bold text-lg mb-1">Available Forms</h2>
-        <p className="text-sm text-gray-400 mb-4">Choose a form to get started.</p>
+
+        {/* Section header row */}
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-black font-bold text-lg">Available Forms</h2>
+          <button
+            onClick={() => setShowHowItWorks(true)}
+            className="text-xs font-semibold active:opacity-60 transition-opacity"
+            style={{ color: '#16a34a' }}
+          >
+            How it works
+          </button>
+        </div>
+
+        {/* Privacy trust strip */}
+        <div className="flex items-start gap-2 mb-4">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          <p className="text-xs text-gray-400 leading-snug">
+            Your information stays on your phone unless you choose to share or print it.
+          </p>
+        </div>
 
         <div className="flex flex-col gap-3">
           {FORMS.map((form) => {

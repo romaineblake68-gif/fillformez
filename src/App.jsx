@@ -11,6 +11,7 @@ import WalletScreen from './screens/WalletScreen'
 import HistoryScreen from './screens/HistoryScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import AutofillPrompt from './components/AutofillPrompt'
+import OnboardingModal, { ONBOARDING_KEY } from './components/OnboardingModal'
 
 // TRN application flow screens
 import TRNWelcomeScreen from './screens/TRNWelcomeScreen'
@@ -403,6 +404,16 @@ export default function App() {
 
   // Autofill prompt — holds { type: 'passport'|'trn'|'nis', returnScreen? }
   const [pendingFormStart, setPendingFormStart] = useState(null)
+
+  // Onboarding — show once on first app open
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    try { return localStorage.getItem(ONBOARDING_KEY) !== 'true' } catch { return true }
+  })
+
+  const handleOnboardingDone = () => {
+    try { localStorage.setItem(ONBOARDING_KEY, 'true') } catch {}
+    setShowOnboarding(false)
+  }
 
   // TRN flow
   const [trnQId, setTrnQId]       = useState(TRN_START)
@@ -1612,6 +1623,7 @@ export default function App() {
             {activeTab === 'profile' && <ProfileScreen />}
           </main>
           <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
+          {showOnboarding && <OnboardingModal onDone={handleOnboardingDone} />}
         </div>
       )
     }
