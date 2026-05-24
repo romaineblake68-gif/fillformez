@@ -209,7 +209,7 @@ function ChoiceGrid({ options, onSelect, speak }) {
 
 // ── Confirmation card ─────────────────────────────────────────────────────────
 
-function ConfirmCard({ value, onChange, onYes, onNo, hint }) {
+function ConfirmCard({ value, onChange, onYes, onNo, hint, savedHint }) {
   return (
     <div className="flex flex-col items-center gap-5 w-full">
       <div className="w-full rounded-2xl px-5 pt-5 pb-4 text-center" style={{ background: '#f0fdf4' }}>
@@ -229,6 +229,11 @@ function ConfirmCard({ value, onChange, onYes, onNo, hint }) {
           spellCheck={false}
         />
         <p className="text-xs text-gray-400 mt-2">Tap to edit spelling</p>
+        {savedHint && (
+          <p className="text-xs font-semibold mt-3 rounded-lg px-3 py-2" style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}>
+            {savedHint}
+          </p>
+        )}
         {hint && (
           <p className="text-xs font-semibold mt-3 rounded-lg px-3 py-2" style={{ background: '#fffbeb', color: '#92400e' }}>
             {hint}
@@ -271,6 +276,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
   const [redoCount, setRedoCount] = useState(0)
   const [mutedState, setMutedState] = useState(() => isMuted())
   const [nameCorrected, setNameCorrected] = useState(false)
+  const [preFilledHint, setPreFilledHint] = useState(false)
 
   const {
     speak,
@@ -317,6 +323,27 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
     setShowHint(false)
     setValidationError(null)
     setRedoCount(0)
+    setNameCorrected(false)
+
+    // Profile autofill: if this question already has an answer pre-loaded from the
+    // user's saved profile, jump straight to confirming so they can review it.
+    const prefilled = answers[question.id]
+    if (prefilled && prefilled !== SKIP) {
+      const value = question.transform === 'titleCase'
+        ? prefilled.replace(/\b\w/g, c => c.toUpperCase())
+        : prefilled
+      setPreFilledHint(true)
+      setPhase('confirming')
+      setTranscript(value)
+      const spokenText = question.toSpeech ? question.toSpeech(value) : value
+      const timer = setTimeout(
+        () => speak(`${qSpeech}. I have ${spokenText} for you. Is that correct?`),
+        550,
+      )
+      return () => { clearTimeout(timer); stopSpeaking(); stopListening() }
+    }
+
+    setPreFilledHint(false)
 
     if (question.defaultValue) {
       // Pre-fill confirming with default value; speak a different message
@@ -390,6 +417,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
   const handleConfirmNo = () => {
     setValidationError(null)
     setNameCorrected(false)
+    setPreFilledHint(false)
     setRedoCount(c => c + 1)
     setPhase('question')
     setTranscript('')
@@ -610,6 +638,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
               onYes={handleConfirmYes}
               onNo={handleConfirmNo}
               hint={nameCorrected ? 'Mic may not have caught the name clearly. Please check the spelling.' : undefined}
+              savedHint={preFilledHint ? 'From your saved profile. Tap to change if needed.' : undefined}
             />
             {validationError && (
               <div className="mt-4 px-4 py-3 rounded-xl text-sm font-semibold text-center" style={{ background: '#fef2f2', color: '#dc2626' }}>

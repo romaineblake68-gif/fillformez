@@ -10,6 +10,7 @@ import BottomNavBar from './components/BottomNavBar'
 import WalletScreen from './screens/WalletScreen'
 import HistoryScreen from './screens/HistoryScreen'
 import ProfileScreen from './screens/ProfileScreen'
+import AutofillPrompt from './components/AutofillPrompt'
 
 // TRN application flow screens
 import TRNWelcomeScreen from './screens/TRNWelcomeScreen'
@@ -58,6 +59,7 @@ import {
 
 import { TRN_QUESTIONS, TRN_START, TRN_BASE_COUNT } from './data/trnFlow'
 import { NIS_QUESTIONS, NIS_START, NIS_BASE_COUNT } from './data/nisFlow'
+import { loadProfile, profileHasData, applyAutofill } from './utils/profileStorage'
 
 import './index.css'
 
@@ -109,6 +111,8 @@ const S = {
   NIS_WELCOME:          'nis-welcome',
   NIS_FLOW:             'nis-flow',
   NIS_FORM_READY:       'nis-form-ready',
+
+  AUTOFILL_PROMPT:      'autofill-prompt',
 }
 
 // ── Persistence ───────────────────────────────────────────────────────────────
@@ -397,6 +401,9 @@ export default function App() {
   // Generated PDF
   const [pdfUrl, setPdfUrl] = useState(null)
 
+  // Autofill prompt — holds { type: 'passport'|'trn'|'nis', returnScreen? }
+  const [pendingFormStart, setPendingFormStart] = useState(null)
+
   // TRN flow
   const [trnQId, setTrnQId]       = useState(TRN_START)
   const [trnHistory, setTrnHistory] = useState([])
@@ -450,10 +457,49 @@ export default function App() {
   }
 
   const startSectionA = (returnScreen) => {
-    setAReturnScreen(returnScreen)
-    setCurrentAQId(SECTION_A_START)
-    setAHistory([])
-    setScreen(S.SECTION_A)
+    const profile = loadProfile()
+    if (profileHasData(profile)) {
+      setPendingFormStart({ type: 'passport', returnScreen })
+      setScreen(S.AUTOFILL_PROMPT)
+    } else {
+      setAReturnScreen(returnScreen)
+      setCurrentAQId(SECTION_A_START)
+      setAHistory([])
+      setAAnswers({})
+      setScreen(S.SECTION_A)
+    }
+  }
+
+  const handleAutofillConfirm = (useProfile) => {
+    if (!pendingFormStart) return
+    const { type, returnScreen } = pendingFormStart
+    const profile = useProfile ? loadProfile() : {}
+
+    if (type === 'passport') {
+      const newAnswers = useProfile ? applyAutofill(profile, 'passport') : {}
+      setAReturnScreen(returnScreen)
+      setCurrentAQId(SECTION_A_START)
+      setAHistory([])
+      setAAnswers(newAnswers)
+      setScreen(S.SECTION_A)
+    } else if (type === 'trn') {
+      const newAnswers = useProfile ? applyAutofill(profile, 'trn') : {}
+      try { localStorage.removeItem(TRN_SAVE_KEY) } catch {}
+      setSavedTRNProgress(null)
+      setTrnQId(TRN_START)
+      setTrnHistory([])
+      setTrnAnswers(newAnswers)
+      setScreen(S.TRN_FLOW)
+    } else if (type === 'nis') {
+      const newAnswers = useProfile ? applyAutofill(profile, 'nis') : {}
+      try { localStorage.removeItem(NIS_SAVE_KEY) } catch {}
+      setSavedNISProgress(null)
+      setNisQId(NIS_START)
+      setNisHistory([])
+      setNisAnswers(newAnswers)
+      setScreen(S.NIS_FLOW)
+    }
+    setPendingFormStart(null)
   }
 
   const goFormTypeExplain = (type, reason, backScreen, firstTime = null) => {
@@ -1352,13 +1398,18 @@ export default function App() {
       return (
         <TRNWelcomeScreen
           onStart={() => {
-            // Clear any saved progress and start fresh
-            try { localStorage.removeItem(TRN_SAVE_KEY) } catch {}
-            setSavedTRNProgress(null)
-            setTrnQId(TRN_START)
-            setTrnHistory([])
-            setTrnAnswers({})
-            setScreen(S.TRN_FLOW)
+            const profile = loadProfile()
+            if (profileHasData(profile)) {
+              setPendingFormStart({ type: 'trn' })
+              setScreen(S.AUTOFILL_PROMPT)
+            } else {
+              try { localStorage.removeItem(TRN_SAVE_KEY) } catch {}
+              setSavedTRNProgress(null)
+              setTrnQId(TRN_START)
+              setTrnHistory([])
+              setTrnAnswers({})
+              setScreen(S.TRN_FLOW)
+            }
           }}
           onBack={goHome}
           onResume={savedTRNProgress ? handleTRNResume : null}
@@ -1415,12 +1466,18 @@ export default function App() {
       return (
         <NISWelcomeScreen
           onStart={() => {
-            try { localStorage.removeItem(NIS_SAVE_KEY) } catch {}
-            setSavedNISProgress(null)
-            setNisQId(NIS_START)
-            setNisHistory([])
-            setNisAnswers({})
-            setScreen(S.NIS_FLOW)
+            const profile = loadProfile()
+            if (profileHasData(profile)) {
+              setPendingFormStart({ type: 'nis' })
+              setScreen(S.AUTOFILL_PROMPT)
+            } else {
+              try { localStorage.removeItem(NIS_SAVE_KEY) } catch {}
+              setSavedNISProgress(null)
+              setNisQId(NIS_START)
+              setNisHistory([])
+              setNisAnswers({})
+              setScreen(S.NIS_FLOW)
+            }
           }}
           onBack={goHome}
           onResume={savedNISProgress ? handleNISResume : null}
@@ -1445,6 +1502,22 @@ export default function App() {
         <NISFormReadyScreen
           pdfUrl={nisPdfUrl}
           onBack={goHome}
+        />
+      )
+
+    // ── Autofill prompt ───────────────────────────────────────────────
+    case S.AUTOFILL_PROMPT:
+      return (
+        <AutofillPrompt
+          onUseProfile={() => handleAutofillConfirm(true)}
+          onStartFresh={() => handleAutofillConfirm(false)}
+          onBack={() => {
+            const type = pendingFormStart?.type
+            setPendingFormStart(null)
+            if (type === 'trn') setScreen(S.TRN_WELCOME)
+            else if (type === 'nis') setScreen(S.NIS_WELCOME)
+            else setScreen(S.FORM_TYPE_EXPLAIN)
+          }}
         />
       )
 
