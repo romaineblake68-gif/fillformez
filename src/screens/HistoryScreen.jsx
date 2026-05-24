@@ -94,7 +94,7 @@ function InProgressCard({ form, onResume }) {
         </div>
       </div>
 
-      {/* Progress bar — only if pct is available (passport only) */}
+      {/* Progress bar — shown for all forms when pct is available */}
       {form.pct != null && (
         <div className="mb-3">
           <div className="flex items-center justify-between mb-1">

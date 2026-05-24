@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import TopNavBar from './components/TopNavBar'
 import HeroSection from './components/HeroSection'
 import WelcomeBackCard from './components/WelcomeBackCard'
+import DraftResumeCard from './components/DraftResumeCard'
 import FormPicker from './components/FormPicker'
 import BottomNavBar from './components/BottomNavBar'
 import WalletScreen from './screens/WalletScreen'
@@ -829,7 +830,8 @@ export default function App() {
       setTrnQId(nextId)
       // Save progress so user can resume if they leave the app
       try {
-        const snap = { currentStep: nextId, answers: newAnswers, history: newHistory }
+        const pct = Math.min(99, Math.round((newHistory.length / TRN_BASE_COUNT) * 100))
+        const snap = { currentStep: nextId, answers: newAnswers, history: newHistory, savedAt: Date.now(), pct }
         localStorage.setItem(TRN_SAVE_KEY, JSON.stringify(snap))
         setSavedTRNProgress(snap)
       } catch {}
@@ -912,7 +914,8 @@ export default function App() {
       setNisHistory(newHistory)
       setNisQId(nextId)
       try {
-        const snap = { currentStep: nextId, answers: newAnswers, history: newHistory }
+        const pct = Math.min(99, Math.round((newHistory.length / NIS_BASE_COUNT) * 100))
+        const snap = { currentStep: nextId, answers: newAnswers, history: newHistory, savedAt: Date.now(), pct }
         localStorage.setItem(NIS_SAVE_KEY, JSON.stringify(snap))
         setSavedNISProgress(snap)
       } catch {}
@@ -1462,15 +1465,17 @@ export default function App() {
           id: 'trn',
           name: 'TRN Application',
           label: null,
-          pct: null,
-          savedAt: null,
+          // Use stored pct if present; fall back to computing from history length
+          // so older snaps (saved before pct was added) still show a progress bar.
+          pct: savedTRNProgress.pct ?? Math.min(99, Math.round(((savedTRNProgress.history?.length ?? 0) / TRN_BASE_COUNT) * 100)),
+          savedAt: savedTRNProgress.savedAt ?? null,
         }] : []),
         ...(savedNISProgress ? [{
           id: 'nis',
           name: 'NIS Registration',
           label: null,
-          pct: null,
-          savedAt: null,
+          pct: savedNISProgress.pct ?? Math.min(99, Math.round(((savedNISProgress.history?.length ?? 0) / NIS_BASE_COUNT) * 100)),
+          savedAt: savedNISProgress.savedAt ?? null,
         }] : []),
       ]
 
@@ -1490,6 +1495,22 @@ export default function App() {
                     savedAtLabel={formatSavedAt(savedProgress.savedAt)}
                     onResume={handleResume}
                     onStartFresh={handleStartFresh}
+                  />
+                )}
+                {savedTRNProgress && (
+                  <DraftResumeCard
+                    formName="TRN Application"
+                    pct={savedTRNProgress.pct ?? null}
+                    savedAtLabel={savedTRNProgress.savedAt ? formatSavedAt(savedTRNProgress.savedAt) : null}
+                    onResume={handleTRNResume}
+                  />
+                )}
+                {savedNISProgress && (
+                  <DraftResumeCard
+                    formName="NIS Registration"
+                    pct={savedNISProgress.pct ?? null}
+                    savedAtLabel={savedNISProgress.savedAt ? formatSavedAt(savedNISProgress.savedAt) : null}
+                    onResume={handleNISResume}
                   />
                 )}
                 <FormPicker
