@@ -169,14 +169,15 @@ export const TRN_QUESTIONS = {
   // ── Screen 8 — Nationality ────────────────────────────────────────────────
   nationality: {
     id: 'nationality', base: 8, section: 'Nationality',
-    text: 'What is your nationality?',
+    text: 'What country are you a citizen of?',
+    hint: 'For most Jamaicans, the answer is Jamaica.',
     type: 'choice',
     options: ['Jamaican', 'Other'],
     next: (ans) => ans === 'Other' ? 'nationalityOther' : 'cellPhone',
   },
   nationalityOther: {
     id: 'nationalityOther', base: 8, isSubQ: true, section: 'Nationality',
-    text: 'What is your nationality? Please say it clearly.',
+    text: 'What country are you a citizen of? Please say the country name clearly.',
     type: 'voice',
     next: () => 'cellPhone',
   },
@@ -477,7 +478,8 @@ export const TRN_QUESTIONS = {
     id: 'idNumber', base: 18, isSubQ: true, section: 'Identification',
     text: 'What is the ID number?',
     type: 'voice',
-    next: () => 'idIssueYear',
+    next: (ans, allAnswers) =>
+      allAnswers.idType === 'Elector Registration ID' ? 'idCountryOfIssue' : 'idIssueYear',
   },
   idIssueYear: {
     id: 'idIssueYear', base: 18, isSubQ: true, section: 'Identification',

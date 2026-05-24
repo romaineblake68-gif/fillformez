@@ -18,8 +18,11 @@ function isNameField(question) {
 }
 
 // Returns true for parish fields: birthParish, homeParish, mailingParish, etc.
+// Also matches any question with isParish: true (e.g. placeOfBirth on the passport form).
 function isParishField(question) {
-  if (!question || !question.id) return false
+  if (!question) return false
+  if (question.isParish) return true
+  if (!question.id) return false
   return /parish/i.test(question.id)
 }
 
