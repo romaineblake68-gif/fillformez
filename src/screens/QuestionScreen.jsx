@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSpeech } from '../hooks/useSpeech'
 import { SECTION_A_QUESTIONS, SECTION_A_BASE_COUNT, SKIP } from '../data/passportFlow'
 import { MIC_PROMPT, SKIP_LABEL, TYPING_TIP, NEARLY_DONE_MSG, NEARLY_DONE_PCT } from '../utils/messages'
-import { normalizeTranscript } from '../utils/normalizeTranscript'
+import { normalizeTranscript, computeNameSuggestions } from '../utils/normalizeTranscript'
 import { isMuted, persistMute } from '../utils/muteState'
 
 // ── Inline icons ──────────────────────────────────────────────────────────────
@@ -261,6 +261,45 @@ function ConfirmCard({ value, onChange, onYes, onNo, hint, savedHint }) {
   )
 }
 
+// ── Name suggestions card ─────────────────────────────────────────────────────
+// Shown when mic score is 0.60–0.84: high enough to surface plausible names,
+// not high enough to auto-correct. User picks a name or dismisses to free edit.
+
+function SuggestionsCard({ suggestions, onSelect, onNoneOfThese }) {
+  return (
+    <div className="flex flex-col items-center gap-5 w-full">
+      <div className="w-full rounded-2xl px-5 py-4 text-center" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">We heard</p>
+        <p className="text-sm font-semibold" style={{ color: '#15803d' }}>Did we catch that correctly?</p>
+      </div>
+
+      <div className="flex flex-col gap-2.5 w-full">
+        {suggestions.map(({ name }) => (
+          <button
+            key={name}
+            onClick={() => onSelect(name)}
+            className="w-full py-5 rounded-2xl font-bold text-xl text-white active:opacity-80 transition-opacity"
+            style={{ background: '#16a34a' }}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={onNoneOfThese}
+        className="font-semibold text-sm active:opacity-60 underline underline-offset-2"
+        style={{ color: '#6b7280' }}
+      >
+        None of these
+      </button>
+      <p className="text-xs text-gray-400 text-center -mt-2">
+        You can also edit the spelling yourself.
+      </p>
+    </div>
+  )
+}
+
 // ── Main QuestionScreen ───────────────────────────────────────────────────────
 
 export default function QuestionScreen({ questionId, questions = SECTION_A_QUESTIONS, baseCount = SECTION_A_BASE_COUNT, onAnswer, onBack, onHome, answers = {} }) {
@@ -277,6 +316,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
   const [mutedState, setMutedState] = useState(() => isMuted())
   const [nameCorrected, setNameCorrected] = useState(false)
   const [preFilledHint, setPreFilledHint] = useState(false)
+  const [suggestedNames, setSuggestedNames] = useState([])
 
   const {
     speak,
@@ -324,6 +364,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
     setValidationError(null)
     setRedoCount(0)
     setNameCorrected(false)
+    setSuggestedNames([])
 
     // Profile autofill: if this question already has an answer pre-loaded from the
     // user's saved profile, jump straight to confirming so they can review it.
@@ -376,7 +417,29 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
       (text) => {
         const normalized = normalizeTranscript(text, question)
         const isNameQ = /name|surname/i.test(question.id)
-        setNameCorrected(isNameQ && normalized.toLowerCase() !== text.toLowerCase().trim())
+        const correctedByNormalize = isNameQ && normalized.toLowerCase() !== text.toLowerCase().trim()
+
+        // Suggestions only fire for name fields that weren't already auto-corrected.
+        // Threshold 0.60: same lower bound as computeNameSuggestions itself.
+        // Upper bound is implicit — if score were ≥0.85, normalizeTranscript would
+        // have already corrected the word and correctedByNormalize would be true.
+        if (isNameQ && !correctedByNormalize) {
+          const suggestions = computeNameSuggestions(normalized, 3)
+          const topScore = suggestions[0]?.score ?? 0
+          const exactMatch = suggestions[0]?.name.toLowerCase() === normalized.toLowerCase()
+
+          if (!exactMatch && topScore >= 0.60) {
+            setSuggestedNames(suggestions)
+            setTranscript(normalized) // preserved as fallback for "None of these"
+            setNameCorrected(false)
+            stopSpeaking()
+            setPhase('suggestions')
+            return
+          }
+        }
+
+        // High confidence (auto-corrected) or low confidence — go straight to confirming.
+        setNameCorrected(correctedByNormalize)
         goToConfirming(normalized, true)
       },
       (err) => {
@@ -418,6 +481,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
     setValidationError(null)
     setNameCorrected(false)
     setPreFilledHint(false)
+    setSuggestedNames([])
     setRedoCount(c => c + 1)
     setPhase('question')
     setTranscript('')
@@ -427,6 +491,19 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
   // ── Skip ─────────────────────────────────────────────────────────────────
 
   const handleSkip = () => onAnswer(question.id, SKIP)
+
+  // ── Name suggestions ──────────────────────────────────────────────────────
+
+  const handleSuggestionSelect = (name) => {
+    setSuggestedNames([])
+    goToConfirming(name, true)
+  }
+
+  // "None of these" falls through to editable confirming with the original transcript
+  const handleSuggestionNoneOfThese = () => {
+    setSuggestedNames([])
+    goToConfirming(transcript, true)
+  }
 
   // ── Replay question ───────────────────────────────────────────────────────
 
@@ -461,7 +538,15 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10">
         <button
-          onClick={onBack}
+          onClick={() => {
+            if (phase === 'suggestions') {
+              setSuggestedNames([])
+              setPhase('question')
+              setTranscript('')
+            } else {
+              onBack()
+            }
+          }}
           aria-label="Go back"
           className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 active:bg-gray-200 flex-shrink-0"
         >
@@ -629,6 +714,15 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
           />
         )}
 
+        {/* ── NAME SUGGESTIONS ─────────────────────────────────────────── */}
+        {phase === 'suggestions' && (
+          <SuggestionsCard
+            suggestions={suggestedNames}
+            onSelect={handleSuggestionSelect}
+            onNoneOfThese={handleSuggestionNoneOfThese}
+          />
+        )}
+
         {/* ── CONFIRMING ───────────────────────────────────────────────── */}
         {phase === 'confirming' && (
           <>
@@ -649,8 +743,8 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
         )}
       </div>
 
-      {/* Footer: "What does this mean?" — hidden during confirming or when no hint */}
-      {phase !== 'confirming' && question.hint && (
+      {/* Footer: "What does this mean?" — hidden during confirming/suggestions or when no hint */}
+      {phase !== 'confirming' && phase !== 'suggestions' && question.hint && (
         <div className="px-5 pb-8 pt-2 bg-white">
           <button
             onClick={handleShowHint}
