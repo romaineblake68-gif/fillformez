@@ -75,7 +75,7 @@ function SendIcon({ active }) {
 
 // ── Text fallback input (always visible below the mic) ────────────────────────
 
-function TextFallback({ onSubmit }) {
+function TextFallback({ onSubmit, highlight }) {
   const [text, setText] = useState('')
 
   const handleSubmit = () => {
@@ -89,14 +89,19 @@ function TextFallback({ onSubmit }) {
   return (
     <div className="w-full mt-2">
       <div className="flex items-center gap-2 mb-2">
-        <div className="flex-1 h-px bg-gray-100" />
-        <span className="text-xs text-gray-300 font-medium">or type below</span>
-        <div className="flex-1 h-px bg-gray-100" />
+        <div className="flex-1 h-px" style={{ background: highlight ? '#bbf7d0' : '#f3f4f6' }} />
+        <span
+          className="text-xs font-semibold"
+          style={{ color: highlight ? '#16a34a' : '#d1d5db' }}
+        >
+          {highlight ? 'type your answer below' : 'or type below'}
+        </span>
+        <div className="flex-1 h-px" style={{ background: highlight ? '#bbf7d0' : '#f3f4f6' }} />
       </div>
 
       <div
         className="flex items-center rounded-2xl overflow-hidden border-2 transition-colors"
-        style={{ borderColor: text ? '#16a34a' : '#e5e7eb' }}
+        style={{ borderColor: text ? '#16a34a' : highlight ? '#16a34a' : '#e5e7eb' }}
       >
         <input
           type="text"
@@ -300,6 +305,23 @@ function SuggestionsCard({ suggestions, onSelect, onNoneOfThese }) {
   )
 }
 
+// ── Voice confirmation command parser ────────────────────────────────────────
+// Used only in the confirming phase — listens for short command words only.
+// Safety: transcripts longer than 3 words are silently ignored (not a command).
+
+const VOICE_YES = new Set(['yes', 'correct', 'continue', 'right', 'yeah', 'yep', 'ok', 'okay', 'sure'])
+const VOICE_NO  = new Set(['no', 'redo', 'wrong', 'again', 'nope', 'change'])
+
+function parseConfirmCommand(rawText) {
+  const words = rawText.trim().toLowerCase().split(/\s+/)
+  if (words.length > 3) return null // too long — almost certainly not a command
+  for (const w of words) {
+    if (VOICE_YES.has(w)) return 'yes'
+    if (VOICE_NO.has(w))  return 'no'
+  }
+  return null
+}
+
 // ── Main QuestionScreen ───────────────────────────────────────────────────────
 
 export default function QuestionScreen({ questionId, questions = SECTION_A_QUESTIONS, baseCount = SECTION_A_BASE_COUNT, onAnswer, onBack, onHome, answers = {} }) {
@@ -317,6 +339,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
   const [nameCorrected, setNameCorrected] = useState(false)
   const [preFilledHint, setPreFilledHint] = useState(false)
   const [suggestedNames, setSuggestedNames] = useState([])
+  const [confirmListening, setConfirmListening] = useState(false)
 
   const {
     speak,
@@ -365,6 +388,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
     setRedoCount(0)
     setNameCorrected(false)
     setSuggestedNames([])
+    setConfirmListening(false)
 
     // Profile autofill: if this question already has an answer pre-loaded from the
     // user's saved profile, jump straight to confirming so they can review it.
@@ -467,6 +491,8 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
   // ── Confirmation ─────────────────────────────────────────────────────────
 
   const handleConfirmYes = () => {
+    stopListening()
+    setConfirmListening(false)
     if (question.validate) {
       const err = question.validate(transcript)
       if (err) {
@@ -478,6 +504,8 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
   }
 
   const handleConfirmNo = () => {
+    stopListening()
+    setConfirmListening(false)
     setValidationError(null)
     setNameCorrected(false)
     setPreFilledHint(false)
@@ -504,6 +532,32 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
     setSuggestedNames([])
     goToConfirming(transcript, true)
   }
+
+  // ── Voice confirmation commands ───────────────────────────────────────────
+  // Triggered by the small mic button in the confirming phase.
+  // Listens for short command words only; anything else is silently ignored.
+
+  const handleConfirmVoice = () => {
+    if (confirmListening) return
+    setConfirmListening(true)
+    startListening(
+      (text) => {
+        setConfirmListening(false)
+        const cmd = parseConfirmCommand(text)
+        if (cmd === 'yes') handleConfirmYes()
+        else if (cmd === 'no') handleConfirmNo()
+        // null → unrecognised command, silently do nothing, buttons stay visible
+      },
+      () => setConfirmListening(false), // error or timeout — reset quietly
+    )
+  }
+
+  // ── Speak retry nudge exactly once when redo count hits 2 ───────────────
+
+  useEffect(() => {
+    if (redoCount !== 2) return
+    speak('Looks like the mic is having trouble catching that answer clearly. You can type the answer below.')
+  }, [redoCount])
 
   // ── Replay question ───────────────────────────────────────────────────────
 
@@ -653,13 +707,28 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
             )}
 
             {redoCount >= 2 && (
-              <p className="text-sm text-center font-semibold rounded-xl px-4 py-3 w-full" style={{ background: '#fffbeb', color: '#92400e' }}>
-                Looks like the mic is not catching that clearly. You can type the correct spelling below.
-              </p>
+              <div
+                className="flex items-start gap-3 rounded-2xl px-4 py-3.5 w-full"
+                style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0' }}
+              >
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: '#f1f5f9' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <path d="M8 21h8M12 17v4" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-700 leading-snug">Having trouble with the mic?</p>
+                  <p className="text-sm text-gray-500 mt-0.5 leading-snug">You can type your answer in the box below.</p>
+                </div>
+              </div>
             )}
 
             {/* Text fallback — always visible */}
-            <TextFallback key={question.id} onSubmit={handleTypedSubmit} />
+            <TextFallback key={question.id} onSubmit={handleTypedSubmit} highlight={redoCount >= 2} />
 
             {question.canSkip && (
               <button
@@ -737,6 +806,68 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
             {validationError && (
               <div className="mt-4 px-4 py-3 rounded-xl text-sm font-semibold text-center" style={{ background: '#fef2f2', color: '#dc2626' }}>
                 {validationError}
+              </div>
+            )}
+
+            {/* Voice confirmation commands — mic-only convenience, never replaces buttons */}
+            {isSpeechRecognitionSupported && (
+              <div className="w-full mt-3">
+                {confirmListening ? (
+                  /* Listening state — full-width pill, prominent green */
+                  <div
+                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl"
+                    style={{
+                      background: '#f0fdf4',
+                      border: '2px solid #16a34a',
+                      boxShadow: '0 0 0 4px rgba(22,163,74,0.10)',
+                    }}
+                  >
+                    <span className="relative flex-shrink-0">
+                      <span
+                        className="absolute inset-0 rounded-full animate-ping"
+                        style={{ background: '#16a34a', opacity: 0.35 }}
+                      />
+                      <span
+                        className="relative block w-3 h-3 rounded-full"
+                        style={{ background: '#16a34a' }}
+                      />
+                    </span>
+                    <span className="text-base font-bold" style={{ color: '#15803d' }}>
+                      Listening…
+                    </span>
+                    <span className="text-sm font-semibold text-gray-400">say YES or REDO</span>
+                  </div>
+                ) : (
+                  /* Idle state — full-width tappable pill with green border */
+                  <button
+                    onClick={handleConfirmVoice}
+                    aria-label="Tap to confirm or redo by voice"
+                    className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl active:opacity-75 transition-opacity"
+                    style={{
+                      background: '#f0fdf4',
+                      border: '2px solid #bbf7d0',
+                    }}
+                  >
+                    {/* Mic icon in a small green circle */}
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: '#16a34a' }}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="white">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" />
+                        <line x1="12" y1="19" x2="12" y2="23" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                        <line x1="8" y1="23" x2="16" y2="23" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                    <div className="flex flex-col items-start">
+                      <span className="text-sm font-bold" style={{ color: '#15803d' }}>
+                        Tap mic and say YES or REDO
+                      </span>
+                      <span className="text-xs text-gray-400">Voice shortcut</span>
+                    </div>
+                  </button>
+                )}
               </div>
             )}
           </>
