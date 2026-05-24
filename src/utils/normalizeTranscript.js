@@ -199,18 +199,32 @@ const PARISH_THRESHOLD = 0.80
 const PARISH_ALIASES = {
   'saint andrew':    'St. Andrew',
   'st andrew':       'St. Andrew',
+  'st. andrew':      'St. Andrew',
+  'street andrew':   'St. Andrew',
   'saint james':     'St. James',
   'st james':        'St. James',
+  'st. james':       'St. James',
+  'street james':    'St. James',
   'saint ann':       'St. Ann',
   'st ann':          'St. Ann',
+  'st. ann':         'St. Ann',
+  'street ann':      'St. Ann',
   'saint thomas':    'St. Thomas',
   'st thomas':       'St. Thomas',
+  'st. thomas':      'St. Thomas',
+  'street thomas':   'St. Thomas',
   'saint mary':      'St. Mary',
   'st mary':         'St. Mary',
+  'st. mary':        'St. Mary',
+  'street mary':     'St. Mary',
   'saint elizabeth': 'St. Elizabeth',
   'st elizabeth':    'St. Elizabeth',
+  'st. elizabeth':   'St. Elizabeth',
+  'street elizabeth':'St. Elizabeth',
   'saint catherine': 'St. Catherine',
   'st catherine':    'St. Catherine',
+  'st. catherine':   'St. Catherine',
+  'street catherine':'St. Catherine',
   'westmorland':     'Westmoreland',
 }
 
@@ -260,6 +274,16 @@ function applyPatoisSubstitutions(text) {
 //
 // titleCase is intentionally NOT applied here — QuestionScreen's goToConfirming
 // already handles it via question.transform.
+//
+// ── computeNameSuggestions ────────────────────────────────────────────────────
+//
+// Separate from the correction path — used only by the UI to show alternatives.
+// Lower threshold (0.60) intentionally casts a wider net than NAME_THRESHOLD
+// so we surface plausible suggestions even when the mic was quite wrong.
+//
+// Returns [{ name: string, score: number }, ...] sorted by score desc, max n.
+// Returns [] for empty input or when no match clears the threshold.
+// Never throws.
 //
 // To add a new correction:
 //   - Common mishear of a name/surname → add to NAME_ALIASES in jamaicanNames.js
@@ -312,5 +336,50 @@ export function normalizeTranscript(rawText, question) {
     return applyPatoisSubstitutions(trimmed)
   } catch {
     return rawText
+  }
+}
+
+// ── Public: name suggestions ───────────────────────────────────────────────────
+
+const SUGGEST_THRESHOLD = 0.60
+
+export function computeNameSuggestions(rawText, n = 3) {
+  try {
+    if (!rawText || !rawText.trim()) return []
+    const lower = rawText.trim().toLowerCase()
+
+    // Alias check — treat as a perfect match
+    const alias = NAME_ALIASES[lower]
+
+    // Score every name in the dictionary
+    const scored = []
+    for (const name of ALL_NAMES) {
+      const dist = levenshtein(lower, name.toLowerCase())
+      const score = 1 - dist / Math.max(lower.length, name.length)
+      if (score >= SUGGEST_THRESHOLD) {
+        scored.push({ name, score })
+      }
+    }
+
+    scored.sort((a, b) => b.score - a.score)
+
+    // Deduplicate (first-name and surname lists may share entries)
+    const seen = new Set()
+    const unique = []
+    for (const item of scored) {
+      if (!seen.has(item.name)) {
+        seen.add(item.name)
+        unique.push(item)
+      }
+    }
+
+    // Prepend alias result at score 1.0 if not already present
+    if (alias && !seen.has(alias)) {
+      unique.unshift({ name: alias, score: 1.0 })
+    }
+
+    return unique.slice(0, n)
+  } catch {
+    return []
   }
 }

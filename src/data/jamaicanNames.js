@@ -242,10 +242,13 @@ export const JAMAICAN_SURNAMES = [
 export const NAME_ALIASES = {
 
   // ── Romaine ──────────────────────────────────────────────────────────────────
-  // en-US hears the "-maine" ending as "mean", producing "you mean"
+  // en-US hears the "-maine" ending as "mean", producing "you mean" / "your mean"
   'you mean':     'Romaine',
+  "you're mean":  'Romaine',
+  'your mean':    'Romaine',
   'romain':       'Romaine',   // French spelling — often the API output
   'remain':       'Romaine',   // rhymes with "romaine lettuce"
+  'domaine':      'Romaine',   // TTS misfire on "ro" prefix
 
   // ── Akeem ────────────────────────────────────────────────────────────────────
   'akim':         'Akeem',

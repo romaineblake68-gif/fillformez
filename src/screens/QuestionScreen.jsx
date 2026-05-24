@@ -3,6 +3,7 @@ import { useSpeech } from '../hooks/useSpeech'
 import { SECTION_A_QUESTIONS, SECTION_A_BASE_COUNT, SKIP } from '../data/passportFlow'
 import { MIC_PROMPT, SKIP_LABEL, TYPING_TIP, NEARLY_DONE_MSG, NEARLY_DONE_PCT } from '../utils/messages'
 import { normalizeTranscript } from '../utils/normalizeTranscript'
+import { isMuted, persistMute } from '../utils/muteState'
 
 // ── Inline icons ──────────────────────────────────────────────────────────────
 
@@ -30,6 +31,16 @@ function SpeakerIcon() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
       <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#16a34a" />
       <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" fill="none" />
+    </svg>
+  )
+}
+
+function MutedSpeakerIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#6b7280" />
+      <line x1="23" y1="9" x2="17" y2="15" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" />
+      <line x1="17" y1="9" x2="23" y2="15" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" />
     </svg>
   )
 }
@@ -170,16 +181,13 @@ function YesNoButtons({ onSelect }) {
 
 // ── Choice grid ───────────────────────────────────────────────────────────────
 
-function ChoiceGrid({ options, onSelect }) {
+function ChoiceGrid({ options, onSelect, speak }) {
   const cols = options.length <= 2 ? 'grid-cols-1' : options.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'
   const py = options.length > 4 ? 'py-4' : 'py-6'
   const textSize = options.length > 4 ? 'text-sm' : 'text-lg'
 
   const handleTap = (opt) => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(opt))
-    }
+    speak?.(opt)
     onSelect(opt)
   }
 
@@ -201,17 +209,31 @@ function ChoiceGrid({ options, onSelect }) {
 
 // ── Confirmation card ─────────────────────────────────────────────────────────
 
-function ConfirmCard({ value, onYes, onNo }) {
+function ConfirmCard({ value, onChange, onYes, onNo, hint }) {
   return (
     <div className="flex flex-col items-center gap-5 w-full">
-      <div className="w-full rounded-2xl px-5 py-6 text-center" style={{ background: '#f0fdf4' }}>
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">You said</p>
-        <p
-          className="text-3xl font-bold text-black leading-tight"
-          style={{ wordBreak: 'break-word' }}
-        >
-          {value}
-        </p>
+      <div className="w-full rounded-2xl px-5 pt-5 pb-4 text-center" style={{ background: '#f0fdf4' }}>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Your answer</p>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          className="w-full text-3xl font-bold text-black leading-tight text-center bg-transparent outline-none"
+          style={{
+            borderBottom: '2px solid #bbf7d0',
+            paddingBottom: 4,
+            wordBreak: 'break-word',
+          }}
+          autoCapitalize="words"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+        <p className="text-xs text-gray-400 mt-2">Tap to edit spelling</p>
+        {hint && (
+          <p className="text-xs font-semibold mt-3 rounded-lg px-3 py-2" style={{ background: '#fffbeb', color: '#92400e' }}>
+            {hint}
+          </p>
+        )}
       </div>
       <p className="text-black font-semibold text-lg text-center">Is this correct?</p>
       <div className="flex gap-3 w-full">
@@ -247,6 +269,8 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
   const [micError, setMicError] = useState(null)
   const [validationError, setValidationError] = useState(null)
   const [redoCount, setRedoCount] = useState(0)
+  const [mutedState, setMutedState] = useState(() => isMuted())
+  const [nameCorrected, setNameCorrected] = useState(false)
 
   const {
     speak,
@@ -256,6 +280,19 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
     isListening,
     isSpeechRecognitionSupported,
   } = useSpeech()
+
+  // ── Mute toggle ───────────────────────────────────────────────────────────
+
+  const toggleMute = () => {
+    const next = !mutedState
+    persistMute(next)
+    setMutedState(next)
+    if (next) {
+      stopSpeaking()
+    } else {
+      setTimeout(() => speak(qSpeech), 100)
+    }
+  }
 
   // ── Shared helper: transition to confirming and optionally speak it ────────
 
@@ -309,7 +346,12 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
     setPhase('recording')
 
     startListening(
-      (text) => goToConfirming(normalizeTranscript(text, question), true),
+      (text) => {
+        const normalized = normalizeTranscript(text, question)
+        const isNameQ = /name|surname/i.test(question.id)
+        setNameCorrected(isNameQ && normalized.toLowerCase() !== text.toLowerCase().trim())
+        goToConfirming(normalized, true)
+      },
       (err) => {
         setPhase('question')
         if (err === 'not-allowed') setMicError('Microphone access was denied. Please allow it in your browser settings.')
@@ -322,9 +364,15 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
 
   // ── Choice / yesno / typed text selection ────────────────────────────────
 
-  const handleChoiceSelect = (option) => goToConfirming(option, true)
+  const handleChoiceSelect = (option) => {
+    setNameCorrected(false)
+    goToConfirming(option, true)
+  }
 
-  const handleTypedSubmit = (text) => goToConfirming(text, true)
+  const handleTypedSubmit = (text) => {
+    setNameCorrected(false)
+    goToConfirming(text, true)
+  }
 
   // ── Confirmation ─────────────────────────────────────────────────────────
 
@@ -341,6 +389,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
 
   const handleConfirmNo = () => {
     setValidationError(null)
+    setNameCorrected(false)
     setRedoCount(c => c + 1)
     setPhase('question')
     setTranscript('')
@@ -363,10 +412,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
   const handleShowHint = () => {
     if (!question.hint) return
     setShowHint(true)
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(question.hintSpeech ?? question.hint))
-    }
+    speak(question.hintSpeech ?? question.hint)
   }
 
   const handleCloseHint = () => {
@@ -416,6 +462,15 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
             {question.section}
           </p>
         )}
+
+        <button
+          onClick={toggleMute}
+          aria-label={mutedState ? 'Unmute audio' : 'Mute audio'}
+          className="w-9 h-9 flex items-center justify-center rounded-full flex-shrink-0 active:opacity-70"
+          style={{ background: mutedState ? '#f3f4f6' : '#f0fdf4' }}
+        >
+          {mutedState ? <MutedSpeakerIcon /> : <SpeakerIcon />}
+        </button>
 
         <button
           onClick={handleReplay}
@@ -542,13 +597,20 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
           <ChoiceGrid
             options={question.getOptions ? question.getOptions(answers) : question.options}
             onSelect={handleChoiceSelect}
+            speak={speak}
           />
         )}
 
         {/* ── CONFIRMING ───────────────────────────────────────────────── */}
         {phase === 'confirming' && (
           <>
-            <ConfirmCard value={transcript} onYes={handleConfirmYes} onNo={handleConfirmNo} />
+            <ConfirmCard
+              value={transcript}
+              onChange={setTranscript}
+              onYes={handleConfirmYes}
+              onNo={handleConfirmNo}
+              hint={nameCorrected ? 'Mic may not have caught the name clearly. Please check the spelling.' : undefined}
+            />
             {validationError && (
               <div className="mt-4 px-4 py-3 rounded-xl text-sm font-semibold text-center" style={{ background: '#fef2f2', color: '#dc2626' }}>
                 {validationError}

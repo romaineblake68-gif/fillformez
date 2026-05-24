@@ -6,7 +6,7 @@
 //   - localStorage is inaccessible to service workers by design.
 //   - Only the app shell (HTML, JS, CSS, SVG assets) is cached.
 
-const CACHE_NAME = 'fillformeez-shell-v1'
+const CACHE_NAME = 'fillformeez-shell-v2'
 
 // ── Install: cache the app entry point ───────────────────────────────────────
 self.addEventListener('install', (event) => {

@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback } from 'react'
+import { isMuted } from '../utils/muteState'
 
 const SpeechRecognition =
   typeof window !== 'undefined'
@@ -13,6 +14,7 @@ export function useSpeech() {
 
   const speak = useCallback((text) => {
     if (!window.speechSynthesis) return
+    if (isMuted()) return
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = 0.97
