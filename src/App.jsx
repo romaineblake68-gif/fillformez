@@ -1448,6 +1448,32 @@ export default function App() {
     // ── Home ──────────────────────────────────────────────────────────
     default: {
       const prog = savedProgress ? computeProgress(savedProgress) : null
+
+      // Build in-progress list for HistoryScreen from all three forms' saved progress
+      const inProgressForms = [
+        ...(savedProgress ? [{
+          id: 'passport',
+          name: 'Passport Application',
+          label: prog.label,
+          pct: prog.pct,
+          savedAt: savedProgress.savedAt ?? null,
+        }] : []),
+        ...(savedTRNProgress ? [{
+          id: 'trn',
+          name: 'TRN Application',
+          label: null,
+          pct: null,
+          savedAt: null,
+        }] : []),
+        ...(savedNISProgress ? [{
+          id: 'nis',
+          name: 'NIS Registration',
+          label: null,
+          pct: null,
+          savedAt: null,
+        }] : []),
+      ]
+
       return (
         <div className="flex flex-col" style={{ minHeight: '100svh' }}>
           <TopNavBar />
@@ -1477,7 +1503,18 @@ export default function App() {
               </>
             )}
             {activeTab === 'wallet'  && <WalletScreen />}
-            {activeTab === 'history' && <HistoryScreen completedForms={completedForms} />}
+            {activeTab === 'history' && (
+              <HistoryScreen
+                completedForms={completedForms}
+                inProgressForms={inProgressForms}
+                onResume={(id) => {
+                  if (id === 'passport') handleResume()
+                  else if (id === 'trn') handleTRNResume()
+                  else if (id === 'nis') handleNISResume()
+                }}
+                onStartForm={() => setActiveTab('home')}
+              />
+            )}
             {activeTab === 'profile' && <ProfileScreen />}
           </main>
           <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
