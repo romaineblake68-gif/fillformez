@@ -1,4 +1,141 @@
+import { useState } from 'react'
+import { loadAnalytics } from '../utils/analytics'
+
+// ── Admin analytics panel ─────────────────────────────────────────────────────
+// Hidden behind a 5-tap on the version label. Admin/owner only.
+
+function StatCard({ label, value, accent }) {
+  return (
+    <div
+      className="rounded-2xl p-4"
+      style={{
+        background: accent === 'gold' ? '#fffbeb' : '#f0fdf4',
+        border: `1px solid ${accent === 'gold' ? '#fcd34d' : '#bbf7d0'}`,
+      }}
+    >
+      <p className="text-xs font-semibold text-gray-400 mb-1">{label}</p>
+      <p
+        className="text-2xl font-bold"
+        style={{ color: accent === 'gold' ? '#92400e' : '#16a34a' }}
+      >
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function AnalyticsPanel({ onClose }) {
+  const { appOpens, formStarts, formCompletions } = loadAnalytics()
+
+  const countByType = (arr, type) => arr.filter(e => e.formType === type).length
+  const resumedCount = formStarts.filter(e => e.resumed).length
+  const completionRate = formStarts.length > 0
+    ? Math.round((formCompletions.length / formStarts.length) * 100)
+    : 0
+
+  const FORM_TYPES = [
+    { label: 'Passport', id: 'passport' },
+    { label: 'TRN',      id: 'trn'      },
+    { label: 'NIS',      id: 'nis'      },
+  ]
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: 'rgba(13,27,56,0.55)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full rounded-t-3xl px-6 pt-5 pb-10 bg-white overflow-y-auto"
+        style={{ maxWidth: 430, maxHeight: '88dvh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div className="w-10 h-1.5 rounded-full mx-auto mb-5 bg-gray-200" />
+
+        <h2 className="font-bold text-xl mb-0.5" style={{ color: '#0d1b38' }}>
+          App Analytics
+        </h2>
+        <p className="text-xs text-gray-400 mb-5">Admin only · Stored locally on this device</p>
+
+        {/* Summary grid */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <StatCard label="App Opens"      value={appOpens.length}       />
+          <StatCard label="Forms Started"  value={formStarts.length}     />
+          <StatCard label="Completions"    value={formCompletions.length}/>
+          <StatCard label="Completion Rate" value={`${completionRate}%`} accent="gold" />
+        </div>
+
+        {/* By form type */}
+        <p className="font-bold text-sm text-gray-700 mb-3">By Form Type</p>
+        <div className="flex flex-col gap-2 mb-6">
+          {FORM_TYPES.map(({ label, id }) => {
+            const starts      = countByType(formStarts,      id)
+            const completions = countByType(formCompletions, id)
+            return (
+              <div
+                key={id}
+                className="flex items-center justify-between px-4 py-3.5 rounded-2xl bg-white"
+                style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1.5px solid #f0fdf4' }}
+              >
+                <p className="font-bold text-sm text-black">{label}</p>
+                <div className="flex gap-5 text-xs">
+                  <span className="text-gray-500">
+                    <span className="font-bold text-black">{starts}</span> started
+                  </span>
+                  <span className="text-gray-500">
+                    <span className="font-bold text-black">{completions}</span> done
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Resume behaviour */}
+        <p className="font-bold text-sm text-gray-700 mb-3">Session Behaviour</p>
+        <div
+          className="flex flex-col gap-2 px-4 py-4 rounded-2xl mb-7 bg-white"
+          style={{ boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: '1.5px solid #f0fdf4' }}
+        >
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Resumed from saved draft</span>
+            <span className="font-bold text-black">{resumedCount}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Started fresh</span>
+            <span className="font-bold text-black">{formStarts.length - resumedCount}</span>
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full py-4 rounded-2xl font-bold text-white text-base active:opacity-80"
+          style={{ background: '#16a34a' }}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── WalletScreen ──────────────────────────────────────────────────────────────
+
 export default function WalletScreen() {
+  const [adminTaps, setAdminTaps]   = useState(0)
+  const [showAdmin, setShowAdmin]   = useState(false)
+
+  const handleVersionTap = () => {
+    const next = adminTaps + 1
+    if (next >= 5) {
+      setShowAdmin(true)
+      setAdminTaps(0)
+    } else {
+      setAdminTaps(next)
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-full bg-white">
 
@@ -66,6 +203,17 @@ export default function WalletScreen() {
           </p>
         </div>
       </div>
+
+      {/* Hidden admin trigger — tap 5× to open analytics */}
+      <button
+        onClick={handleVersionTap}
+        className="mt-auto py-6 w-full text-center"
+        aria-hidden="true"
+      >
+        <span className="text-xs text-gray-300 select-none">FillFormEZ v1.0</span>
+      </button>
+
+      {showAdmin && <AnalyticsPanel onClose={() => setShowAdmin(false)} />}
     </div>
   )
 }

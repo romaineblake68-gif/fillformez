@@ -61,6 +61,7 @@ import {
 import { TRN_QUESTIONS, TRN_START, TRN_BASE_COUNT } from './data/trnFlow'
 import { NIS_QUESTIONS, NIS_START, NIS_BASE_COUNT } from './data/nisFlow'
 import { loadProfile, profileHasData, applyAutofill } from './utils/profileStorage'
+import { trackAppOpen, trackFormStart, trackFormComplete } from './utils/analytics'
 
 import './index.css'
 
@@ -447,6 +448,9 @@ export default function App() {
   const [sectionDBack, setSectionDBack] = useState(S.SECTION_C_ROUTING)
   const [sectionEBack, setSectionEBack] = useState(S.SECTION_D_COMPLETE)
 
+  // ── Analytics: track each app open ───────────────────────────────────────
+  useEffect(() => { trackAppOpen() }, [])
+
   // ── TEMPORARY: jump straight to NIS marital status question ──────────────
   useEffect(() => {
     if (!NIS_TEST_MODE) return
@@ -473,6 +477,7 @@ export default function App() {
       setPendingFormStart({ type: 'passport', returnScreen })
       setScreen(S.AUTOFILL_PROMPT)
     } else {
+      trackFormStart('passport', false)
       setAReturnScreen(returnScreen)
       setCurrentAQId(SECTION_A_START)
       setAHistory([])
@@ -487,6 +492,7 @@ export default function App() {
     const profile = useProfile ? loadProfile() : {}
 
     if (type === 'passport') {
+      trackFormStart('passport', false)
       const newAnswers = useProfile ? applyAutofill(profile, 'passport') : {}
       setAReturnScreen(returnScreen)
       setCurrentAQId(SECTION_A_START)
@@ -494,6 +500,7 @@ export default function App() {
       setAAnswers(newAnswers)
       setScreen(S.SECTION_A)
     } else if (type === 'trn') {
+      trackFormStart('trn', false)
       const newAnswers = useProfile ? applyAutofill(profile, 'trn') : {}
       try { localStorage.removeItem(TRN_SAVE_KEY) } catch {}
       setSavedTRNProgress(null)
@@ -502,6 +509,7 @@ export default function App() {
       setTrnAnswers(newAnswers)
       setScreen(S.TRN_FLOW)
     } else if (type === 'nis') {
+      trackFormStart('nis', false)
       const newAnswers = useProfile ? applyAutofill(profile, 'nis') : {}
       try { localStorage.removeItem(NIS_SAVE_KEY) } catch {}
       setSavedNISProgress(null)
@@ -574,6 +582,7 @@ export default function App() {
 
   const handleResume = () => {
     if (!savedProgress) return
+    trackFormStart('passport', true)
     const s = savedProgress
     setFormType(s.formType ?? 'regular')
     setFormTypeReason(s.formTypeReason ?? 'first-time')
@@ -897,6 +906,7 @@ export default function App() {
 
   const handleTRNResume = () => {
     if (!savedTRNProgress) return
+    trackFormStart('trn', true)
     setTrnQId(savedTRNProgress.currentStep || TRN_START)
     setTrnAnswers(savedTRNProgress.answers || {})
     setTrnHistory(savedTRNProgress.history || [])
@@ -952,6 +962,7 @@ export default function App() {
     if (nextId === null) {
       import('./utils/nisPdfGenerator').then(({ generateNISPDF }) =>
         generateNISPDF(newAnswers).then((url) => {
+          trackFormComplete('nis')
           try { localStorage.removeItem(NIS_SAVE_KEY) } catch {}
           setSavedNISProgress(null)
           const entry = {
@@ -981,6 +992,7 @@ export default function App() {
 
   const handleNISResume = () => {
     if (!savedNISProgress) return
+    trackFormStart('nis', true)
     setNisQId(savedNISProgress.currentStep || NIS_START)
     setNisAnswers(savedNISProgress.answers || {})
     setNisHistory(savedNISProgress.history || [])
@@ -1354,6 +1366,7 @@ export default function App() {
         <FinalCompleteScreen
           onReview={() => setScreen(S.ANSWERS_SUMMARY)}
           onFormReady={(url) => {
+            trackFormComplete('passport')
             const entry = {
               name: 'Jamaica Passport Application',
               completedAt: Date.now(),
@@ -1417,6 +1430,7 @@ export default function App() {
               setPendingFormStart({ type: 'trn' })
               setScreen(S.AUTOFILL_PROMPT)
             } else {
+              trackFormStart('trn', false)
               try { localStorage.removeItem(TRN_SAVE_KEY) } catch {}
               setSavedTRNProgress(null)
               setTrnQId(TRN_START)
@@ -1449,6 +1463,7 @@ export default function App() {
           trnAnswers={trnAnswers}
           onBack={() => setScreen(S.TRN_FLOW)}
           onFormReady={(url) => {
+            trackFormComplete('trn')
             // PDF generated — clear saved TRN progress
             try { localStorage.removeItem(TRN_SAVE_KEY) } catch {}
             setSavedTRNProgress(null)
@@ -1488,6 +1503,7 @@ export default function App() {
               setPendingFormStart({ type: 'nis' })
               setScreen(S.AUTOFILL_PROMPT)
             } else {
+              trackFormStart('nis', false)
               try { localStorage.removeItem(NIS_SAVE_KEY) } catch {}
               setSavedNISProgress(null)
               setNisQId(NIS_START)
