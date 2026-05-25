@@ -22,10 +22,18 @@ import TRNFormReadyScreen from './screens/TRNFormReadyScreen'
 import NISWelcomeScreen from './screens/NISWelcomeScreen'
 import NISFormReadyScreen from './screens/NISFormReadyScreen'
 
+// Simplified Adult Renewal flow screens
+import SimplifiedRenewalEligibilityScreen from './screens/SimplifiedRenewalEligibilityScreen'
+import SimplifiedRenewalFormReadyScreen from './screens/SimplifiedRenewalFormReadyScreen'
+
+// DEV ONLY — uncomment to re-enable SR overlay calibration button
+// import SRTestButton from './components/SRTestButton'
+
 // Passport application flow screens
 import WelcomeScreen from './screens/WelcomeScreen'
 import RoutingScreen from './screens/RoutingScreen'
 import NoticeScreen from './screens/NoticeScreen'
+
 import FormTypeScreen from './screens/FormTypeScreen'
 import QuestionScreen from './screens/QuestionScreen'
 import SectionACompleteScreen from './screens/SectionACompleteScreen'
@@ -60,6 +68,7 @@ import {
 
 import { TRN_QUESTIONS, TRN_START, TRN_BASE_COUNT } from './data/trnFlow'
 import { NIS_QUESTIONS, NIS_START, NIS_BASE_COUNT } from './data/nisFlow'
+import { SR_QUESTIONS, SR_START, SR_BASE_COUNT } from './data/simplifiedRenewalFlow'
 import { loadProfile, profileHasData, applyAutofill } from './utils/profileStorage'
 import { trackAppOpen, trackFormStart, trackFormComplete } from './utils/analytics'
 
@@ -114,6 +123,11 @@ const S = {
   NIS_FLOW:             'nis-flow',
   NIS_FORM_READY:       'nis-form-ready',
 
+  SR_ELIGIBILITY:       'sr-eligibility',
+  SR_FLOW:              'sr-flow',
+  SR_DECLARATION:       'sr-declaration',
+  SR_FORM_READY:        'sr-form-ready',
+
   AUTOFILL_PROMPT:      'autofill-prompt',
 }
 
@@ -123,6 +137,7 @@ const SAVE_KEY    = 'fillformeasy_passport_v1'
 const HISTORY_KEY = 'fillformeasy_history_v1'
 const TRN_SAVE_KEY = 'trnFormProgress'
 const NIS_SAVE_KEY = 'nisFormProgress'
+const SR_SAVE_KEY  = 'srFormProgress'
 
 // Only save when the user has entered the real form sections (not pre-flow routing)
 const SAVEABLE_SCREENS = new Set([
@@ -263,6 +278,19 @@ const E_SIGN_REMIND_LINES = [
   'The passport officer will ask you to sign it in front of them at the office. Leave that box empty until then.',
 ]
 
+const SR_DECLARATION_SPEECH =
+  'Almost done! Before you print, please note — you must sign the declaration section on the form. ' +
+  'It is best to sign in front of the passport officer at the PICA office. ' +
+  'Make sure your signature does not touch the border of the signature box. ' +
+  'Your thumbprint will be collected at the office — you do not need to add it yourself.'
+
+const SR_DECLARATION_LINES = [
+  'You must sign the declaration section on the form — do not sign it before you go to the office if you can help it.',
+  'It is best to sign in front of the passport officer at PICA.',
+  'Make sure your signature does not touch the border of the signature box.',
+  'Your thumbprint will be collected at the PICA office — you do not need to add it yourself.',
+]
+
 // ── Common Section D question IDs (those that return null = end of common Qs)
 const D_COMMON_IDS = new Set([
   'dPassportNumber', 'dIssueDay', 'dIssueMonth', 'dIssueYear',
@@ -337,6 +365,54 @@ const NIS_TEST_DATA = {
   employerAddress: '2 National Heroes Circle, Kingston',
   employerRefNumber: '__SKIP__', industryType: 'Education',
 }
+// ── SR Coming Soon overlay ────────────────────────────────────────────────────
+// Shown whenever the user reaches an SR entry point while the flow is locked.
+// onContinue receives the destination screen for after dismissal.
+
+function SRComingSoonOverlay({ onContinue }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: 'rgba(13,27,56,0.55)' }}
+    >
+      <div
+        className="w-full rounded-t-3xl px-6 pt-5 pb-10 bg-white"
+        style={{ maxWidth: 430 }}
+      >
+        <div className="w-10 h-1.5 rounded-full mx-auto mb-5 bg-gray-200" />
+
+        <div className="flex justify-center mb-4">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center"
+            style={{ background: '#fef3c7' }}
+          >
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </div>
+        </div>
+
+        <h2 className="font-bold text-xl text-center mb-2" style={{ color: '#0d1b38' }}>
+          Coming Soon
+        </h2>
+        <p className="text-sm text-gray-500 text-center leading-relaxed mb-7 px-2">
+          Simplified Adult Renewal is currently being improved and will be available soon.
+          Please use the regular passport application for now.
+        </p>
+
+        <button
+          onClick={onContinue}
+          className="w-full py-4 rounded-2xl font-bold text-white text-base active:opacity-80"
+          style={{ background: '#16a34a' }}
+        >
+          Use Regular Passport Application
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -444,6 +520,21 @@ export default function App() {
     } catch { return null }
   })
 
+  // Simplified Adult Renewal flow
+  const [srQId, setSrQId]       = useState(SR_START)
+  const [srHistory, setSrHistory] = useState([])
+  const [srAnswers, setSrAnswers] = useState({})
+  const [srPdfUrl, setSrPdfUrl]   = useState(null)
+  const [srEligibilityBack, setSrEligibilityBack] = useState(S.HOME)
+  const [showSRComingSoon, setShowSRComingSoon] = useState(false)
+
+  const [savedSRProgress, setSavedSRProgress] = useState(() => {
+    try {
+      const raw = localStorage.getItem(SR_SAVE_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch { return null }
+  })
+
   // Dynamic back destinations
   const [sectionDBack, setSectionDBack] = useState(S.SECTION_C_ROUTING)
   const [sectionEBack, setSectionEBack] = useState(S.SECTION_D_COMPLETE)
@@ -517,6 +608,15 @@ export default function App() {
       setNisHistory([])
       setNisAnswers(newAnswers)
       setScreen(S.NIS_FLOW)
+    } else if (type === 'simplified-renewal') {
+      trackFormStart('simplified-renewal', false)
+      const newAnswers = useProfile ? applyAutofill(profile, 'simplified-renewal') : {}
+      try { localStorage.removeItem(SR_SAVE_KEY) } catch {}
+      setSavedSRProgress(null)
+      setSrQId(SR_START)
+      setSrHistory([])
+      setSrAnswers(newAnswers)
+      setScreen(S.SR_FLOW)
     }
     setPendingFormStart(null)
   }
@@ -1009,6 +1109,81 @@ export default function App() {
     setNisQId(prevId)
   }
 
+  // ── Simplified Adult Renewal ──────────────────────────────────────────────
+
+  const startSRFlow = () => {
+    const profile = loadProfile()
+    if (profileHasData(profile)) {
+      setPendingFormStart({ type: 'simplified-renewal' })
+      setScreen(S.AUTOFILL_PROMPT)
+    } else {
+      trackFormStart('simplified-renewal', false)
+      try { localStorage.removeItem(SR_SAVE_KEY) } catch {}
+      setSavedSRProgress(null)
+      setSrQId(SR_START)
+      setSrHistory([])
+      setSrAnswers({})
+      setScreen(S.SR_FLOW)
+    }
+  }
+
+  const handleSRResume = () => {
+    if (!savedSRProgress) return
+    trackFormStart('simplified-renewal', true)
+    setSrQId(savedSRProgress.currentStep || SR_START)
+    setSrAnswers(savedSRProgress.answers || {})
+    setSrHistory(savedSRProgress.history || [])
+    setScreen(S.SR_FLOW)
+  }
+
+  const handleSRAnswer = (questionId, value) => {
+    const newAnswers = { ...srAnswers, [questionId]: value }
+    setSrAnswers(newAnswers)
+    const q = SR_QUESTIONS[questionId]
+    const nextId = q.next(value, newAnswers)
+    if (nextId === null) {
+      // Record completion and clear draft before declaration screen
+      trackFormComplete('simplified-renewal')
+      try { localStorage.removeItem(SR_SAVE_KEY) } catch {}
+      setSavedSRProgress(null)
+      const entry = {
+        name: 'Simplified Passport Renewal',
+        completedAt: Date.now(),
+        applicantName: [newAnswers.srFirstName, newAnswers.srSurname].filter(Boolean).join(' '),
+      }
+      const updated = [entry, ...completedForms]
+      setCompletedForms(updated)
+      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(updated)) } catch {}
+      // Generate PDF in background — will be ready by the time user taps "Continue to Form"
+      import('./utils/simplifiedRenewalPdfGenerator').then(({ generateSimplifiedRenewalPDF }) =>
+        generateSimplifiedRenewalPDF(newAnswers)
+          .then(url => setSrPdfUrl(url))
+          .catch(err => console.error('[SR] PDF generation failed:', err))
+      )
+      setScreen(S.SR_DECLARATION)
+    } else {
+      const newHistory = [...srHistory, questionId]
+      setSrHistory(newHistory)
+      setSrQId(nextId)
+      try {
+        const pct = Math.min(99, Math.round((newHistory.length / SR_BASE_COUNT) * 100))
+        const snap = { currentStep: nextId, answers: newAnswers, history: newHistory, savedAt: Date.now(), pct }
+        localStorage.setItem(SR_SAVE_KEY, JSON.stringify(snap))
+        setSavedSRProgress(snap)
+      } catch {}
+    }
+  }
+
+  const handleSRBack = () => {
+    if (srHistory.length === 0) { setScreen(S.SR_ELIGIBILITY); return }
+    const prevId = srHistory[srHistory.length - 1]
+    const newAnswers = { ...srAnswers }
+    delete newAnswers[srQId]
+    setSrAnswers(newAnswers)
+    setSrHistory((h) => h.slice(0, -1))
+    setSrQId(prevId)
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────
 
   switch (screen) {
@@ -1074,15 +1249,30 @@ export default function App() {
 
     case S.FORM_TYPE_EXPLAIN:
       return (
-        <FormTypeScreen
-          qualifiesSimplified={formType === 'simplified'}
-          reason={formTypeReason}
-          onSelect={(type) => {
-            setFormType(type)
-            startSectionA(S.FORM_TYPE_EXPLAIN)
-          }}
-          onBack={() => setScreen(formTypeBackScreen)}
-        />
+        <>
+          <FormTypeScreen
+            qualifiesSimplified={formType === 'simplified'}
+            reason={formTypeReason}
+            onSelect={(type) => {
+              if (type === 'simplified') {
+                // SR flow is locked — show coming soon overlay instead of routing
+                setShowSRComingSoon(true)
+              } else {
+                setFormType(type)
+                startSectionA(S.FORM_TYPE_EXPLAIN)
+              }
+            }}
+            onBack={() => setScreen(formTypeBackScreen)}
+          />
+          {showSRComingSoon && (
+            <SRComingSoonOverlay
+              onContinue={() => {
+                setShowSRComingSoon(false)
+                setScreen(S.WELCOME)
+              }}
+            />
+          )}
+        </>
       )
 
     case S.SECTION_A:
@@ -1541,6 +1731,53 @@ export default function App() {
         />
       )
 
+    // ── Simplified Adult Renewal ──────────────────────────────────────
+
+    case S.SR_ELIGIBILITY:
+      return (
+        <SimplifiedRenewalEligibilityScreen
+          onEligible={startSRFlow}
+          onNotEligible={() => setScreen(S.WELCOME)}
+          onBack={() => setScreen(srEligibilityBack)}
+        />
+      )
+
+    case S.SR_FLOW:
+      return (
+        <QuestionScreen
+          questionId={srQId}
+          questions={SR_QUESTIONS}
+          baseCount={SR_BASE_COUNT}
+          onAnswer={handleSRAnswer}
+          onBack={handleSRBack}
+          onHome={goHome}
+          answers={srAnswers}
+        />
+      )
+
+    case S.SR_DECLARATION:
+      return (
+        <NoticeScreen
+          title="Before You Print — Sign at the Office"
+          speechText={SR_DECLARATION_SPEECH}
+          lines={SR_DECLARATION_LINES}
+          buttonLabel="Continue to Form"
+          onContinue={() => setScreen(S.SR_FORM_READY)}
+          onBack={goHome}
+        />
+      )
+
+    case S.SR_FORM_READY:
+      return (
+        <SimplifiedRenewalFormReadyScreen
+          pdfUrl={srPdfUrl}
+          onBack={() => setScreen(S.SR_DECLARATION)}
+          onViewHistory={() => { setScreen(S.HOME); setActiveTab('history') }}
+          onStartAnother={goHome}
+          onHome={goHome}
+        />
+      )
+
     // ── Autofill prompt ───────────────────────────────────────────────
     case S.AUTOFILL_PROMPT:
       return (
@@ -1552,6 +1789,7 @@ export default function App() {
             setPendingFormStart(null)
             if (type === 'trn') setScreen(S.TRN_WELCOME)
             else if (type === 'nis') setScreen(S.NIS_WELCOME)
+            else if (type === 'simplified-renewal') setScreen(S.HOME)
             else setScreen(S.FORM_TYPE_EXPLAIN)
           }}
         />
@@ -1585,6 +1823,13 @@ export default function App() {
           label: null,
           pct: savedNISProgress.pct ?? Math.min(99, Math.round(((savedNISProgress.history?.length ?? 0) / NIS_BASE_COUNT) * 100)),
           savedAt: savedNISProgress.savedAt ?? null,
+        }] : []),
+        ...(savedSRProgress ? [{
+          id: 'simplified-renewal',
+          name: 'Simplified Passport Renewal',
+          label: null,
+          pct: savedSRProgress.pct ?? Math.min(99, Math.round(((savedSRProgress.history?.length ?? 0) / SR_BASE_COUNT) * 100)),
+          savedAt: savedSRProgress.savedAt ?? null,
         }] : []),
       ]
 
@@ -1622,11 +1867,23 @@ export default function App() {
                     onResume={handleNISResume}
                   />
                 )}
+                {savedSRProgress && (
+                  <DraftResumeCard
+                    formName="Simplified Passport Renewal"
+                    pct={savedSRProgress.pct ?? null}
+                    savedAtLabel={savedSRProgress.savedAt ? formatSavedAt(savedSRProgress.savedAt) : null}
+                    onResume={handleSRResume}
+                  />
+                )}
                 <FormPicker
                   onSelect={(formId) => {
                     if (formId === 'passport') setScreen(S.WELCOME)
                     else if (formId === 'trn') setScreen(S.TRN_WELCOME)
                     else if (formId === 'nis') setScreen(S.NIS_WELCOME)
+                    else if (formId === 'simplified-renewal') {
+                      // SR flow locked — FormPicker's comingSoon flag intercepts the tap;
+                      // this branch is intentionally unreachable while SR is Coming Soon
+                    }
                   }}
                 />
                 <div className="h-4" />
@@ -1641,6 +1898,7 @@ export default function App() {
                   if (id === 'passport') handleResume()
                   else if (id === 'trn') handleTRNResume()
                   else if (id === 'nis') handleNISResume()
+                  else if (id === 'simplified-renewal') handleSRResume()
                 }}
                 onStartForm={() => setActiveTab('home')}
               />
@@ -1649,6 +1907,8 @@ export default function App() {
           </main>
           <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
           {showOnboarding && <OnboardingModal onDone={handleOnboardingDone} />}
+          {/* DEV ONLY — uncomment when calibrating SR PDF overlay */}
+          {/* <SRTestButton /> */}
         </div>
       )
     }

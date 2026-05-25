@@ -12,15 +12,15 @@ function ChevronLeft() {
 function SpeakerIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#1a6fe8" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="#1a6fe8" strokeWidth="2" strokeLinecap="round" fill="none" />
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="#16a34a" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" fill="none" />
     </svg>
   )
 }
 
 /**
  * Generic routing screen used for all step-branching decisions:
- *   ForWhom, FirstOrRenewal, RenewalAge, RenewalName, FormChoice, SectionBRouting
+ *   FirstOrRenewal, RenewalAge, RenewalName, SectionCRouting, SectionDStatus
  *
  * Props:
  *   title      – small label at top (e.g. "Passport Application")
@@ -59,6 +59,7 @@ export default function RoutingScreen({
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
+
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 sticky top-0 bg-white z-10">
         <button
@@ -77,7 +78,7 @@ export default function RoutingScreen({
           onClick={replay}
           aria-label="Replay question"
           className="w-9 h-9 flex items-center justify-center rounded-full flex-shrink-0 active:opacity-70"
-          style={{ background: '#eef4fd' }}
+          style={{ background: '#f0fdf4' }}
         >
           <SpeakerIcon />
         </button>
@@ -85,29 +86,43 @@ export default function RoutingScreen({
 
       {/* Body */}
       <div className="flex-1 flex flex-col justify-center px-5 py-8">
-        {/* Question */}
-        <h1 className="text-black font-bold text-2xl leading-snug text-center mb-4 px-1">
-          {question}
-        </h1>
 
-        {note && (
-          <p className="text-gray-500 text-base text-center leading-relaxed mb-6 px-2">
-            {note}
-          </p>
-        )}
+        {/* Question card */}
+        <div
+          className="w-full rounded-2xl px-5 py-6 mb-7"
+          style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0' }}
+        >
+          <h1 className="font-bold text-xl leading-snug text-center" style={{ color: '#0d1b38' }}>
+            {question}
+          </h1>
+          {note && (
+            <p className="text-gray-500 text-sm text-center leading-relaxed mt-3 px-1">
+              {note}
+            </p>
+          )}
+        </div>
 
-        <div className={['mt-4', layout === 'grid' ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'].join(' ')}>
+        {/* Buttons */}
+        <div className={layout === 'grid' ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
           {buttons.map((btn, i) => {
             const isPrimary = btn.style === 'primary' || i === 0
             return (
               <button
                 key={btn.value}
                 onClick={() => onSelect(btn.value)}
-                className="px-4 py-5 rounded-2xl font-bold text-base active:scale-95 transition-transform text-center"
+                className="w-full px-4 py-5 rounded-2xl font-bold text-base active:scale-95 transition-transform text-center"
                 style={
                   isPrimary
-                    ? { background: '#1a6fe8', color: 'white' }
-                    : { background: '#eef4fd', color: '#1a6fe8', border: '2px solid #dce9fa' }
+                    ? {
+                        background:  '#16a34a',
+                        color:       'white',
+                        boxShadow:   '0 2px 8px rgba(22,163,74,0.20)',
+                      }
+                    : {
+                        background:  'white',
+                        color:       '#0d1b38',
+                        border:      '2px solid #0d1b38',
+                      }
                 }
               >
                 {btn.label}

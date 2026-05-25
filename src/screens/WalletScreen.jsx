@@ -34,9 +34,10 @@ function AnalyticsPanel({ onClose }) {
     : 0
 
   const FORM_TYPES = [
-    { label: 'Passport', id: 'passport' },
-    { label: 'TRN',      id: 'trn'      },
-    { label: 'NIS',      id: 'nis'      },
+    { label: 'Passport',            id: 'passport'           },
+    { label: 'TRN',                 id: 'trn'                },
+    { label: 'NIS',                 id: 'nis'                },
+    { label: 'Simplified Renewal',  id: 'simplified-renewal' },
   ]
 
   return (

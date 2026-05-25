@@ -49,6 +49,51 @@ const HOW_IT_WORKS = [
   },
 ]
 
+function ComingSoonModal({ onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: 'rgba(13,27,56,0.5)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full rounded-t-3xl px-6 pt-5 pb-10 bg-white"
+        style={{ maxWidth: 430 }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div className="w-10 h-1.5 rounded-full mx-auto mb-5 bg-gray-200" />
+
+        {/* Icon */}
+        <div className="flex justify-center mb-4">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center"
+            style={{ background: '#fef3c7' }}
+          >
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </div>
+        </div>
+
+        <h2 className="font-bold text-xl text-center mb-2" style={{ color: '#0d1b38' }}>Coming Soon</h2>
+        <p className="text-sm text-gray-500 text-center leading-relaxed mb-7 px-2">
+          Simplified Adult Renewal is currently being improved and will be available soon.
+        </p>
+
+        <button
+          onClick={onClose}
+          className="w-full py-4 rounded-2xl font-bold text-white text-base active:opacity-80"
+          style={{ background: '#0d1b38' }}
+        >
+          OK, got it
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function HowItWorksModal({ onClose }) {
   return (
     <div
@@ -149,6 +194,20 @@ const FORMS = [
       </svg>
     ),
   },
+  {
+    id: 'simplified-renewal',
+    title: 'Simplified Passport Renewal',
+    description: 'Renew your adult passport using the shorter simplified form.',
+    difficulty: 'Easy',
+    comingSoon: true,
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+        <rect x="4" y="2" width="24" height="28" rx="3" fill="#16a34a" />
+        <circle cx="16" cy="13" r="5" fill="white" />
+        <polyline points="11 22 14 25 21 18" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      </svg>
+    ),
+  },
 ]
 
 const BENEFITS = [
@@ -207,10 +266,12 @@ const BENEFITS = [
 
 export default function FormPicker({ onSelect }) {
   const [showHowItWorks, setShowHowItWorks] = useState(false)
+  const [showComingSoon, setShowComingSoon] = useState(false)
 
   return (
     <>
       {showHowItWorks && <HowItWorksModal onClose={() => setShowHowItWorks(false)} />}
+      {showComingSoon  && <ComingSoonModal onClose={() => setShowComingSoon(false)} />}
 
       {/* ── Available Forms ──────────────────────────────────────────── */}
       <section id="home-forms" className="px-4 pt-7 pb-2">
@@ -240,6 +301,49 @@ export default function FormPicker({ onSelect }) {
         <div className="flex flex-col gap-3">
           {FORMS.map((form) => {
             const diff = DIFFICULTY[form.difficulty]
+
+            if (form.comingSoon) {
+              return (
+                <button
+                  key={form.id}
+                  onClick={() => setShowComingSoon(true)}
+                  className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left bg-white transition-all"
+                  style={{
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+                    border:    '1.5px solid #f3f4f6',
+                    opacity:   0.68,
+                  }}
+                >
+                  {/* Icon — greyed background */}
+                  <div
+                    className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: '#f3f4f6' }}
+                  >
+                    {form.icon}
+                  </div>
+
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-base text-black leading-snug">{form.title}</p>
+                    <p className="text-gray-400 text-sm mt-0.5 leading-snug">{form.description}</p>
+                    {/* Coming Soon badge replaces difficulty pill */}
+                    <span
+                      className="inline-block mt-1.5 text-xs font-bold px-2.5 py-0.5 rounded-full"
+                      style={{ background: '#fef3c7', color: '#92400e' }}
+                    >
+                      Coming Soon
+                    </span>
+                  </div>
+
+                  {/* Clock icon replaces arrow */}
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </button>
+              )
+            }
+
             return (
               <button
                 key={form.id}

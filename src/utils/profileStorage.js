@@ -76,13 +76,29 @@ const NIS_AUTOFILL_MAP = {
   cellPhone:  'cellPhone',
 }
 
+// SR autofill: profile key → srQuestion ID.
+// Only top-level unconditional fields — routing yes/no questions are excluded.
+const SR_AUTOFILL_MAP = {
+  firstName:  'srFirstName',
+  surname:    'srSurname',
+  birthDay:   'srBirthDay',
+  birthMonth: 'srBirthMonth',
+  birthYear:  'srBirthYear',
+  occupation: 'srOccupation',
+  cellPhone:  'srCellPhone',
+  email:      'srEmail',
+  trn:        'srTRN',
+  nis:        'srNIS',
+}
+
 // Returns a partial answers object pre-populated from the profile.
 // Only non-empty profile values are included.
 export function applyAutofill(profile, formType) {
   const map =
-    formType === 'passport' ? PASSPORT_AUTOFILL_MAP :
-    formType === 'trn'      ? TRN_AUTOFILL_MAP :
-                              NIS_AUTOFILL_MAP
+    formType === 'passport'          ? PASSPORT_AUTOFILL_MAP :
+    formType === 'trn'               ? TRN_AUTOFILL_MAP :
+    formType === 'simplified-renewal'? SR_AUTOFILL_MAP :
+                                       NIS_AUTOFILL_MAP
 
   const result = {}
   for (const [profileKey, formKey] of Object.entries(map)) {
