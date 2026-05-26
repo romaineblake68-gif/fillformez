@@ -1,14 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useSpeech } from '../hooks/useSpeech'
 
 const READY_SPEECH =
-  'Your TRN application form is ready! Please look it over carefully before you print. Then bring it to the Tax Administration Jamaica office of your choice with your identification document. You are almost there — good luck!'
+  "Your Driver's Licence application form is ready! Please look it over carefully before you print. " +
+  "Remember to sign the form after printing, bring your required documents and photos, " +
+  "and bring your payment to the licensing office. Good luck!"
 
 const WHAT_TO_BRING = [
-  'Completed TRN application form (this one)',
-  'Valid photo ID (passport, driver\'s licence, or national ID)',
-  'Birth certificate (if no photo ID)',
-  'Marriage certificate (if name changed due to marriage)',
+  { text: 'Completed application form (this one)',                   always: true  },
+  { text: 'Valid National ID or passport',                           always: true  },
+  { text: 'Two recent passport-size photos (within 6 months)',       always: true  },
+  { text: 'Proof of payment of the licensing fee',                   always: true  },
+  { text: 'Certificate of Competence (if required for your class)',  always: false },
+  { text: 'TRN card or document showing your TRN',                   always: false },
+]
+
+const REMINDERS = [
+  'Sign the application form after printing — do not sign before you arrive.',
+  'A Certificate of Competence may be required depending on the licence class.',
+  'Passport-size photos must be recent (taken within the last 6 months).',
+  'Making a false statement on this form is a criminal offence.',
 ]
 
 function ChevronLeft() {
@@ -28,7 +39,7 @@ function SpeakerIcon() {
   )
 }
 
-export default function TRNFormReadyScreen({ pdfUrl, onBack, onViewHistory, onStartAnother, onHome }) {
+export default function DLFormReadyScreen({ pdfUrl, onBack, onViewHistory, onStartAnother, onHome }) {
   const { speak, stopSpeaking } = useSpeech()
   const [downloaded, setDownloaded] = useState(false)
 
@@ -43,9 +54,10 @@ export default function TRNFormReadyScreen({ pdfUrl, onBack, onViewHistory, onSt
   }
 
   const handleDownload = () => {
+    if (!pdfUrl) return
     const a = document.createElement('a')
     a.href = pdfUrl
-    a.download = 'TRN-Application-Completed.pdf'
+    a.download = 'DL1-Application-Completed.pdf'
     a.click()
     URL.revokeObjectURL(pdfUrl)
     setDownloaded(true)
@@ -70,7 +82,7 @@ export default function TRNFormReadyScreen({ pdfUrl, onBack, onViewHistory, onSt
           onClick={replay}
           aria-label="Replay message"
           className="w-9 h-9 flex items-center justify-center rounded-full flex-shrink-0 active:opacity-70"
-          style={{ background: '#eef4fd' }}
+          style={{ background: '#f0fdf4' }}
         >
           <SpeakerIcon />
         </button>
@@ -78,7 +90,7 @@ export default function TRNFormReadyScreen({ pdfUrl, onBack, onViewHistory, onSt
 
       <div className="flex-1 flex flex-col px-5 pt-8 pb-10 overflow-y-auto">
 
-        {/* Big success checkmark */}
+        {/* Success mark */}
         <div className="flex justify-center mb-5">
           <div
             className="w-24 h-24 rounded-full flex items-center justify-center shadow-xl"
@@ -97,12 +109,12 @@ export default function TRNFormReadyScreen({ pdfUrl, onBack, onViewHistory, onSt
           Great job. Please review it carefully before you print — you are responsible for making sure all your information is correct.
         </p>
 
-        {/* Download / Open PDF */}
+        {/* Download button */}
         <button
           onClick={downloaded ? undefined : handleDownload}
-          disabled={downloaded}
+          disabled={!pdfUrl || downloaded}
           className="w-full py-4 rounded-2xl font-bold text-white text-base shadow-md transition-opacity flex items-center justify-center gap-2 mb-4"
-          style={{ background: downloaded ? '#6b7280' : '#16a34a', cursor: downloaded ? 'default' : 'pointer' }}
+          style={{ background: downloaded ? '#6b7280' : pdfUrl ? '#16a34a' : '#9ca3af', cursor: (downloaded || !pdfUrl) ? 'default' : 'pointer' }}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             {downloaded
@@ -110,23 +122,32 @@ export default function TRNFormReadyScreen({ pdfUrl, onBack, onViewHistory, onSt
               : (<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>)
             }
           </svg>
-          {downloaded ? 'Downloaded ✓' : 'Download / Open PDF'}
+          {downloaded ? 'Downloaded ✓' : pdfUrl ? 'Download / Open PDF' : 'Preparing PDF…'}
         </button>
 
-        {/* Reminder */}
+        {/* Reminders */}
         <div
-          className="w-full rounded-2xl px-4 py-3.5 flex items-start gap-3 mb-5"
+          className="w-full rounded-2xl px-4 py-4 mb-5"
           style={{ background: '#fffbeb', border: '1.5px solid #fcd34d' }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
-            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-          </svg>
-          <p className="text-sm leading-relaxed" style={{ color: '#92400e' }}>
-            Remember to print and sign any required sections before submitting.
-          </p>
+          <div className="flex items-center gap-2 mb-2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" strokeWidth="3" />
+            </svg>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#92400e' }}>Important Reminders</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            {REMINDERS.map((r, i) => (
+              <p key={i} className="text-sm leading-relaxed" style={{ color: '#92400e' }}>
+                • {r}
+              </p>
+            ))}
+          </div>
         </div>
 
-        {/* Navigation actions */}
+        {/* Navigation */}
         <div className="w-full flex flex-col gap-3 mb-8">
           <button
             onClick={onViewHistory}
@@ -166,22 +187,27 @@ export default function TRNFormReadyScreen({ pdfUrl, onBack, onViewHistory, onSt
           className="w-full rounded-2xl px-5 py-5"
           style={{ background: '#f8fdf9', border: '1.5px solid #bbf7d0' }}
         >
-          <p className="text-black font-bold text-sm mb-4">What to bring to the TAJ office</p>
+          <p className="text-black font-bold text-sm mb-4">What to bring to the licensing office</p>
           <div className="flex flex-col gap-3">
             {WHAT_TO_BRING.map((item, i) => (
               <div key={i} className="flex items-start gap-3">
                 <div
                   className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5"
-                  style={{ background: '#16a34a' }}
+                  style={{ background: item.always ? '#16a34a' : '#94a3b8' }}
                 >
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <p className="text-sm leading-relaxed text-gray-800 font-medium">{item}</p>
+                <p className={`text-sm leading-relaxed ${item.always ? 'text-gray-800 font-medium' : 'text-gray-500'}`}>
+                  {item.text}
+                </p>
               </div>
             ))}
           </div>
+          <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+            Green items are required for everyone. Grey items apply depending on your situation.
+          </p>
         </div>
       </div>
     </div>

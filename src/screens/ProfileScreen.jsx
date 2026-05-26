@@ -219,7 +219,7 @@ function SaveCancelButtons({ onSave, onCancel }) {
 
 // ── Confirm clear modal ───────────────────────────────────────────────────────
 
-function ConfirmClearModal({ onConfirm, onCancel }) {
+function ConfirmClearAllModal({ onConfirm, onCancel }) {
   return (
     <div
       className="fixed inset-0 z-[60] flex items-end justify-center"
@@ -231,16 +231,26 @@ function ConfirmClearModal({ onConfirm, onCancel }) {
         style={{ background: '#fff', maxWidth: 430 }}
         onClick={e => e.stopPropagation()}
       >
-        <p className="font-bold text-lg text-center mb-2" style={{ color: '#0d1b38' }}>Clear Profile?</p>
-        <p className="text-sm text-center leading-relaxed mb-6" style={{ color: '#6b7280' }}>
-          This will remove all your saved profile data from this device. Your completed forms are not affected.
+        <div className="flex justify-center mb-4">
+          <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: '#fef2f2' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6M14 11v6" />
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+            </svg>
+          </div>
+        </div>
+        <p className="font-bold text-lg text-center mb-2" style={{ color: '#0d1b38' }}>Clear All My Data?</p>
+        <p className="text-sm text-center leading-relaxed mb-6 px-2" style={{ color: '#6b7280' }}>
+          This will permanently erase your profile, all saved drafts, form history, and analytics from this device. This cannot be undone.
         </p>
         <button
           onClick={onConfirm}
           className="w-full py-4 rounded-2xl font-bold text-white text-base mb-3 active:opacity-80"
           style={{ background: '#ef4444' }}
         >
-          Yes, Clear Profile
+          Yes, Delete Everything
         </button>
         <button
           onClick={onCancel}
@@ -265,7 +275,7 @@ function dob(p) {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ onClearAll }) {
   const [profile, setProfile] = useState(() => loadProfile())
   const [sheet, setSheet] = useState(null) // which edit sheet is open
   const [draft, setDraft] = useState({})
@@ -291,18 +301,9 @@ export default function ProfileScreen() {
 
   const updateDraft = (key, value) => setDraft(d => ({ ...d, [key]: value }))
 
-  const handleClearProfile = () => {
-    const empty = {
-      firstName: '', middleName: '', surname: '',
-      birthDay: '', birthMonth: '', birthYear: '',
-      sex: '', cellPhone: '', email: '',
-      trn: '', nis: '', passportNumber: '',
-      homeParish: '', homeDistrict: '', homeStreet: '',
-      occupation: '',
-    }
-    setProfile(empty)
-    saveProfile(empty)
+  const handleClearAll = () => {
     setShowClearConfirm(false)
+    if (onClearAll) onClearAll()
   }
 
   return (
@@ -372,8 +373,8 @@ export default function ProfileScreen() {
       )}
 
       {showClearConfirm && (
-        <ConfirmClearModal
-          onConfirm={handleClearProfile}
+        <ConfirmClearAllModal
+          onConfirm={handleClearAll}
           onCancel={() => setShowClearConfirm(false)}
         />
       )}
@@ -456,8 +457,8 @@ export default function ProfileScreen() {
             {icons.trash}
           </div>
           <div className="flex-1">
-            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#9ca3af' }}>Clear Profile</p>
-            <p className="text-sm font-semibold mt-0.5" style={{ color: '#ef4444' }}>Remove all saved data</p>
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#9ca3af' }}>Privacy</p>
+            <p className="text-sm font-semibold mt-0.5" style={{ color: '#ef4444' }}>Clear All My Data</p>
           </div>
         </button>
       </div>

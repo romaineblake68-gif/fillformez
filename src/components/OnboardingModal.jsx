@@ -97,6 +97,11 @@ export default function OnboardingModal({ onDone }) {
         >
           {isLast ? 'Get Started' : 'Next'}
         </button>
+
+        {/* Non-affiliation note */}
+        <p className="text-xs text-center mt-4 leading-relaxed" style={{ color: '#9ca3af' }}>
+          FillFormEZ is not an official government app. It only helps you prepare forms.
+        </p>
       </div>
     </div>
   )

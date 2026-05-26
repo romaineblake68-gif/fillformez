@@ -26,8 +26,14 @@ import NISFormReadyScreen from './screens/NISFormReadyScreen'
 import SimplifiedRenewalEligibilityScreen from './screens/SimplifiedRenewalEligibilityScreen'
 import SimplifiedRenewalFormReadyScreen from './screens/SimplifiedRenewalFormReadyScreen'
 
+// Driver's Licence flow screens
+import DLFormReadyScreen from './screens/DLFormReadyScreen'
+
 // DEV ONLY — uncomment to re-enable SR overlay calibration button
 // import SRTestButton from './components/SRTestButton'
+
+// DEV ONLY — DL overlay calibration button
+import DLTestButton from './components/DLTestButton'
 
 // Passport application flow screens
 import WelcomeScreen from './screens/WelcomeScreen'
@@ -69,6 +75,7 @@ import {
 import { TRN_QUESTIONS, TRN_START, TRN_BASE_COUNT } from './data/trnFlow'
 import { NIS_QUESTIONS, NIS_START, NIS_BASE_COUNT } from './data/nisFlow'
 import { SR_QUESTIONS, SR_START, SR_BASE_COUNT } from './data/simplifiedRenewalFlow'
+import { DL_QUESTIONS, DL_START, DL_BASE_COUNT } from './data/dlFlow'
 import { loadProfile, profileHasData, applyAutofill } from './utils/profileStorage'
 import { trackAppOpen, trackFormStart, trackFormComplete } from './utils/analytics'
 
@@ -128,6 +135,9 @@ const S = {
   SR_DECLARATION:       'sr-declaration',
   SR_FORM_READY:        'sr-form-ready',
 
+  DL_FLOW:              'dl-flow',
+  DL_FORM_READY:        'dl-form-ready',
+
   AUTOFILL_PROMPT:      'autofill-prompt',
 }
 
@@ -138,6 +148,7 @@ const HISTORY_KEY = 'fillformeasy_history_v1'
 const TRN_SAVE_KEY = 'trnFormProgress'
 const NIS_SAVE_KEY = 'nisFormProgress'
 const SR_SAVE_KEY  = 'srFormProgress'
+const DL_SAVE_KEY  = 'dlFormProgress'
 
 // Only save when the user has entered the real form sections (not pre-flow routing)
 const SAVEABLE_SCREENS = new Set([
@@ -298,73 +309,6 @@ const D_COMMON_IDS = new Set([
   'dPrevHasMiddle', 'dPrevMiddleName',
 ])
 
-// ── TEMPORARY: NIS marital status debug ──────────────────────────────────────
-const NIS_TEST_MODE = false
-
-const NIS_TEST_FAKE = {
-  title: 'Mr', firstName: 'Test', lastName: 'User',
-  hasMiddleName: 'No', hasMaidenName: 'No', hasOtherNames: 'No',
-  birthDay: '15', birthMonth: 'June', birthYear: '1990',
-  birthCountry: 'Jamaica', birthParish: 'Kingston',
-  motherFirstName: 'Mary', motherLastName: 'User', motherHasMiddle: 'No',
-  homeDistrict: 'Denham Town', homeParish: 'Kingston', homeCountry: 'Jamaica',
-  hasHomeStreet: 'No', mailingAddressSame: 'Yes',
-  hasEmail: 'No', hasWorkPhone: 'No',
-}
-
-// Ordered sequence — position in this array drives advancement, not question.next()
-const NIS_TEST_SEQUENCE = ['maritalStatus', 'sex', 'employmentType']
-
-const NIS_TEST_QUESTIONS = {
-  maritalStatus: {
-    question: 'What is your marital status?',
-    type: 'choice',
-    options: ['Single', 'Married', 'Common-Law Union', 'Widowed', 'Divorced'],
-    base: 1,
-    next: () => 'sex',
-  },
-  sex: {
-    question: 'What is your sex?',
-    type: 'choice',
-    options: ['Male', 'Female'],
-    base: 2,
-    next: () => 'employmentType',
-  },
-  employmentType: {
-    question: 'What is your employment status?',
-    type: 'choice',
-    options: ['Employed', 'Self-Employed', 'Domestic', 'Student', 'Unemployed'],
-    base: 3,
-    next: () => null,
-  },
-}
-const NIS_TEST_DATA = {
-  title: 'Mr',
-  firstName: 'Romaine', lastName: 'Blake',
-  hasMiddleName: 'No', hasMaidenName: 'No', hasOtherNames: 'No',
-  sex: 'Male',
-  birthDay: '15', birthMonth: 'June', birthYear: '1990',
-  birthCountry: 'Jamaica', birthParish: 'St. Elizabeth',
-  prevNIS: '__SKIP__', trnNumber: '__SKIP__',
-  maritalStatus: 'Married',
-  spouseTitle: 'Mrs', spouseLastName: 'Blake', spouseFirstName: 'Sandra',
-  spouseHasMiddle: 'No', spouseMaidenName: '__SKIP__',
-  marriageDay: '10', marriageMonth: 'March', marriageYear: '2015',
-  spouseBirthDay: '22', spouseBirthMonth: 'August', spouseBirthYear: '1992',
-  homeDistrict: 'Southfield', homeParish: 'St. Elizabeth', homeCountry: 'Jamaica',
-  hasHomeStreet: 'Yes', homeStreet: '14 Main Street',
-  mailingAddressSame: 'Yes',
-  hasEmail: 'Yes', email: 'romaineblake68@gmail.com',
-  cellPhone: '876-555-1234', hasHomePhone: 'No', hasWorkPhone: 'No',
-  fatherLastName: '__SKIP__', fatherFirstName: '__SKIP__', fatherHasMiddle: 'No',
-  motherLastName: 'Blake', motherFirstName: 'Mary',
-  motherHasMiddle: 'No', motherMaidenName: '__SKIP__',
-  employmentType: 'Employed',
-  occupation: 'Teacher',
-  employerName: 'Ministry of Education',
-  employerAddress: '2 National Heroes Circle, Kingston',
-  employerRefNumber: '__SKIP__', industryType: 'Education',
-}
 // ── SR Coming Soon overlay ────────────────────────────────────────────────────
 // Shown whenever the user reaches an SR entry point while the flow is locked.
 // onContinue receives the destination screen for after dismissal.
@@ -528,6 +472,20 @@ export default function App() {
   const [srEligibilityBack, setSrEligibilityBack] = useState(S.HOME)
   const [showSRComingSoon, setShowSRComingSoon] = useState(false)
 
+  // ── Driver's Licence ──────────────────────────────────────────────────────
+  const [dlQId, setDlQId]         = useState(DL_START)
+  const [dlHistory, setDlHistory] = useState([])
+  const [dlAnswers, setDlAnswers] = useState({})
+  const [dlPdfUrl, setDlPdfUrl]   = useState(null)
+  const [savedDLProgress, setSavedDLProgress] = useState(() => {
+    try {
+      const raw = localStorage.getItem(DL_SAVE_KEY)
+      if (!raw) return null
+      const snap = JSON.parse(raw)
+      return snap?.currentStep ? snap : null
+    } catch { return null }
+  })
+
   const [savedSRProgress, setSavedSRProgress] = useState(() => {
     try {
       const raw = localStorage.getItem(SR_SAVE_KEY)
@@ -542,16 +500,31 @@ export default function App() {
   // ── Analytics: track each app open ───────────────────────────────────────
   useEffect(() => { trackAppOpen() }, [])
 
-  // ── TEMPORARY: jump straight to NIS marital status question ──────────────
+  // ── Auto-expire stale drafts (older than 48 hours) ────────────────────────
+  // Runs once on mount. If a draft was saved more than 48 hours ago, it is
+  // silently deleted so sensitive data doesn't linger indefinitely.
   useEffect(() => {
-    if (!NIS_TEST_MODE) return
-    setNisAnswers(NIS_TEST_FAKE)
-    setNisQId('maritalStatus')
-    setNisHistory([])
-    setScreen(S.NIS_FLOW)
-  }, [])
-  // ── END TEMPORARY ─────────────────────────────────────────────────────────
-
+    const MAX_AGE = 48 * 60 * 60 * 1000 // 48 hours in milliseconds
+    const now = Date.now()
+    const draftKeys = [
+      [SAVE_KEY,     setSavedProgress],
+      [TRN_SAVE_KEY, setSavedTRNProgress],
+      [NIS_SAVE_KEY, setSavedNISProgress],
+      [SR_SAVE_KEY,  setSavedSRProgress],
+      [DL_SAVE_KEY,  setSavedDLProgress],
+    ]
+    draftKeys.forEach(([key, clearState]) => {
+      try {
+        const raw = localStorage.getItem(key)
+        if (!raw) return
+        const snap = JSON.parse(raw)
+        if (snap?.savedAt && now - snap.savedAt > MAX_AGE) {
+          localStorage.removeItem(key)
+          clearState(null)
+        }
+      } catch {}
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Navigation helpers ──────────────────────────────────────────────────
 
@@ -560,6 +533,51 @@ export default function App() {
     setActiveTab('home')
     setCurrentAQId(SECTION_A_START)
     setAHistory([])
+  }
+
+  // ── Clear all user data ───────────────────────────────────────────────────
+  // Called from the "Clear All My Data" button in ProfileScreen.
+  // Wipes every piece of user data from localStorage and releases any active
+  // PDF blob URLs from memory. Does NOT clear non-sensitive prefs (mute, onboarding).
+
+  const handleClearAll = () => {
+    // 1. Remove all localStorage keys that hold user data
+    ;[
+      SAVE_KEY, HISTORY_KEY,
+      TRN_SAVE_KEY, NIS_SAVE_KEY, SR_SAVE_KEY, DL_SAVE_KEY,
+      'fillformeez_analytics_v1',
+      'fillformeez_profile_v1',
+    ].forEach(key => { try { localStorage.removeItem(key) } catch {} })
+
+    // 2. Revoke any active PDF blob URLs so the PDF data is freed from memory
+    ;[pdfUrl, trnPdfUrl, nisPdfUrl, srPdfUrl, dlPdfUrl].forEach(url => {
+      if (url) { try { URL.revokeObjectURL(url) } catch {} }
+    })
+
+    // 3. Reset all in-memory state that holds user data
+    setSavedProgress(null)
+    setCompletedForms([])
+    setSavedTRNProgress(null)
+    setSavedNISProgress(null)
+    setSavedSRProgress(null)
+    setSavedDLProgress(null)
+    setPdfUrl(null)
+    setTrnPdfUrl(null)
+    setNisPdfUrl(null)
+    setSrPdfUrl(null)
+    setDlPdfUrl(null)
+    setAAnswers({})
+    setBAnswers({})
+    setCAnswers({})
+    setDAnswers({})
+    setF1Answers({})
+    setF2Answers({})
+    setTrnAnswers({})
+    setNisAnswers({})
+    setSrAnswers({})
+    setDlAnswers({})
+
+    goHome()
   }
 
   const startSectionA = (returnScreen) => {
@@ -617,6 +635,15 @@ export default function App() {
       setSrHistory([])
       setSrAnswers(newAnswers)
       setScreen(S.SR_FLOW)
+    } else if (type === 'dl') {
+      trackFormStart('dl', false)
+      const newAnswers = useProfile ? applyAutofill(profile, 'dl') : {}
+      try { localStorage.removeItem(DL_SAVE_KEY) } catch {}
+      setSavedDLProgress(null)
+      setDlQId(DL_START)
+      setDlHistory([])
+      setDlAnswers(newAnswers)
+      setScreen(S.DL_FLOW)
     }
     setPendingFormStart(null)
   }
@@ -1025,36 +1052,7 @@ export default function App() {
 
   // ── NIS ──────────────────────────────────────────────────────────────────
 
-  const handleNISTestGenerate = () => {
-    import('./utils/nisPdfGenerator').then(({ generateNISPDF }) =>
-      generateNISPDF(NIS_TEST_DATA)
-        .then(url => { setNisPdfUrl(url); setScreen(S.NIS_FORM_READY) })
-        .catch(err => console.error('[NIS test] PDF failed:', err))
-    )
-  }
-
-  const handleNISAnswer = (_questionId, value) => {
-    if (NIS_TEST_MODE) {
-      // Use nisQId from state (not the arg, which may be undefined) to track position
-      const newAnswers = { ...nisAnswers, [nisQId]: value }
-      setNisAnswers(newAnswers)
-      const idx = NIS_TEST_SEQUENCE.indexOf(nisQId)
-      const nextId = idx < NIS_TEST_SEQUENCE.length - 1 ? NIS_TEST_SEQUENCE[idx + 1] : null
-      if (nextId === null) {
-        import('./utils/nisPdfGenerator').then(({ generateNISPDF }) =>
-          generateNISPDF(newAnswers)
-            .then(url => { setNisPdfUrl(url); setScreen(S.NIS_FORM_READY) })
-            .catch(err => console.error('[NIS test] PDF failed:', err))
-        )
-      } else {
-        setNisHistory(h => [...h, nisQId])
-        setNisQId(nextId)
-      }
-      return
-    }
-
-    // ── Normal flow ────────────────────────────────────────────────────────
-    const questionId = _questionId
+  const handleNISAnswer = (questionId, value) => {
     const newAnswers = { ...nisAnswers, [questionId]: value }
     setNisAnswers(newAnswers)
     const q = NIS_QUESTIONS[questionId]
@@ -1182,6 +1180,80 @@ export default function App() {
     setSrAnswers(newAnswers)
     setSrHistory((h) => h.slice(0, -1))
     setSrQId(prevId)
+  }
+
+  // ── Driver's Licence ──────────────────────────────────────────────────────
+
+  const startDLFlow = () => {
+    const profile = loadProfile()
+    if (profileHasData(profile)) {
+      setPendingFormStart({ type: 'dl' })
+      setScreen(S.AUTOFILL_PROMPT)
+    } else {
+      trackFormStart('dl', false)
+      try { localStorage.removeItem(DL_SAVE_KEY) } catch {}
+      setSavedDLProgress(null)
+      setDlQId(DL_START)
+      setDlHistory([])
+      setDlAnswers({})
+      setScreen(S.DL_FLOW)
+    }
+  }
+
+  const handleDLResume = () => {
+    if (!savedDLProgress) return
+    trackFormStart('dl', true)
+    setDlQId(savedDLProgress.currentStep || DL_START)
+    setDlAnswers(savedDLProgress.answers || {})
+    setDlHistory(savedDLProgress.history || [])
+    setScreen(S.DL_FLOW)
+  }
+
+  const handleDLAnswer = (value) => {
+    const questionId = dlQId
+    const newAnswers = { ...dlAnswers, [questionId]: value }
+    setDlAnswers(newAnswers)
+    const q = DL_QUESTIONS[questionId]
+    const nextId = q.next(value, newAnswers)
+    if (nextId === null) {
+      trackFormComplete('dl')
+      try { localStorage.removeItem(DL_SAVE_KEY) } catch {}
+      setSavedDLProgress(null)
+      const entry = {
+        name: "Driver's Licence Application",
+        completedAt: Date.now(),
+        applicantName: [newAnswers.dlFirstNames, newAnswers.dlLastName].filter(Boolean).join(' '),
+      }
+      const updated = [entry, ...completedForms]
+      setCompletedForms(updated)
+      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(updated)) } catch {}
+      import('./utils/dlPdfGenerator').then(({ generateDLPDF }) =>
+        generateDLPDF(newAnswers)
+          .then(url => setDlPdfUrl(url))
+          .catch(err => console.error('[DL] PDF generation failed:', err))
+      )
+      setScreen(S.DL_FORM_READY)
+    } else {
+      const newHistory = [...dlHistory, questionId]
+      setDlHistory(newHistory)
+      setDlQId(nextId)
+      try {
+        const pct = Math.min(99, Math.round((newHistory.length / DL_BASE_COUNT) * 100))
+        const snap = { currentStep: nextId, answers: newAnswers, history: newHistory, savedAt: Date.now(), pct }
+        localStorage.setItem(DL_SAVE_KEY, JSON.stringify(snap))
+        setSavedDLProgress(snap)
+      } catch {}
+    }
+  }
+
+  const handleDLBack = () => {
+    if (dlHistory.length === 0) { goHome(); return }
+    const prevId = dlHistory[dlHistory.length - 1]
+    const newAnswers = { ...dlAnswers }
+    delete newAnswers[dlQId]
+    setDlAnswers(newAnswers)
+    setDlHistory((h) => h.slice(0, -1))
+    setDlQId(prevId)
   }
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -1711,8 +1783,8 @@ export default function App() {
       return (
         <QuestionScreen
           questionId={nisQId}
-          questions={NIS_TEST_MODE ? NIS_TEST_QUESTIONS : NIS_QUESTIONS}
-          baseCount={NIS_TEST_MODE ? 3 : NIS_BASE_COUNT}
+          questions={NIS_QUESTIONS}
+          baseCount={NIS_BASE_COUNT}
           onAnswer={handleNISAnswer}
           onBack={handleNISBack}
           onHome={goHome}
@@ -1778,6 +1850,31 @@ export default function App() {
         />
       )
 
+    // ── Driver's Licence ──────────────────────────────────────────────
+    case S.DL_FLOW:
+      return (
+        <QuestionScreen
+          questionId={dlQId}
+          questions={DL_QUESTIONS}
+          baseCount={DL_BASE_COUNT}
+          onAnswer={handleDLAnswer}
+          onBack={handleDLBack}
+          onHome={goHome}
+          answers={dlAnswers}
+        />
+      )
+
+    case S.DL_FORM_READY:
+      return (
+        <DLFormReadyScreen
+          pdfUrl={dlPdfUrl}
+          onBack={() => setScreen(S.DL_FORM_READY)}
+          onViewHistory={() => { setScreen(S.HOME); setActiveTab('history') }}
+          onStartAnother={goHome}
+          onHome={goHome}
+        />
+      )
+
     // ── Autofill prompt ───────────────────────────────────────────────
     case S.AUTOFILL_PROMPT:
       return (
@@ -1790,6 +1887,7 @@ export default function App() {
             if (type === 'trn') setScreen(S.TRN_WELCOME)
             else if (type === 'nis') setScreen(S.NIS_WELCOME)
             else if (type === 'simplified-renewal') setScreen(S.HOME)
+            else if (type === 'dl') setScreen(S.HOME)
             else setScreen(S.FORM_TYPE_EXPLAIN)
           }}
         />
@@ -1830,6 +1928,13 @@ export default function App() {
           label: null,
           pct: savedSRProgress.pct ?? Math.min(99, Math.round(((savedSRProgress.history?.length ?? 0) / SR_BASE_COUNT) * 100)),
           savedAt: savedSRProgress.savedAt ?? null,
+        }] : []),
+        ...(savedDLProgress ? [{
+          id: 'dl',
+          name: "Driver's Licence Application",
+          label: null,
+          pct: savedDLProgress.pct ?? Math.min(99, Math.round(((savedDLProgress.history?.length ?? 0) / DL_BASE_COUNT) * 100)),
+          savedAt: savedDLProgress.savedAt ?? null,
         }] : []),
       ]
 
@@ -1875,11 +1980,20 @@ export default function App() {
                     onResume={handleSRResume}
                   />
                 )}
+                {savedDLProgress && (
+                  <DraftResumeCard
+                    formName="Driver's Licence Application"
+                    pct={savedDLProgress.pct ?? null}
+                    savedAtLabel={savedDLProgress.savedAt ? formatSavedAt(savedDLProgress.savedAt) : null}
+                    onResume={handleDLResume}
+                  />
+                )}
                 <FormPicker
                   onSelect={(formId) => {
                     if (formId === 'passport') setScreen(S.WELCOME)
                     else if (formId === 'trn') setScreen(S.TRN_WELCOME)
                     else if (formId === 'nis') setScreen(S.NIS_WELCOME)
+                    else if (formId === 'dl') startDLFlow()
                     else if (formId === 'simplified-renewal') {
                       // SR flow locked — FormPicker's comingSoon flag intercepts the tap;
                       // this branch is intentionally unreachable while SR is Coming Soon
@@ -1899,16 +2013,18 @@ export default function App() {
                   else if (id === 'trn') handleTRNResume()
                   else if (id === 'nis') handleNISResume()
                   else if (id === 'simplified-renewal') handleSRResume()
+                  else if (id === 'dl') handleDLResume()
                 }}
                 onStartForm={() => setActiveTab('home')}
               />
             )}
-            {activeTab === 'profile' && <ProfileScreen />}
+            {activeTab === 'profile' && <ProfileScreen onClearAll={handleClearAll} />}
           </main>
           <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
           {showOnboarding && <OnboardingModal onDone={handleOnboardingDone} />}
           {/* DEV ONLY — uncomment when calibrating SR PDF overlay */}
           {/* <SRTestButton /> */}
+          <DLTestButton />
         </div>
       )
     }

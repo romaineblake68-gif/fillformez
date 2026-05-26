@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSpeech } from '../hooks/useSpeech'
 
 const READY_SPEECH =
@@ -30,6 +30,7 @@ function SpeakerIcon() {
 
 export default function NISFormReadyScreen({ pdfUrl, onBack, onViewHistory, onStartAnother, onHome }) {
   const { speak, stopSpeaking } = useSpeech()
+  const [downloaded, setDownloaded] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => speak(READY_SPEECH), 500)
@@ -46,6 +47,8 @@ export default function NISFormReadyScreen({ pdfUrl, onBack, onViewHistory, onSt
     a.href = pdfUrl
     a.download = 'NIS-Registration-Completed.pdf'
     a.click()
+    URL.revokeObjectURL(pdfUrl)
+    setDownloaded(true)
   }
 
   return (
@@ -91,21 +94,23 @@ export default function NISFormReadyScreen({ pdfUrl, onBack, onViewHistory, onSt
           Your form is ready!
         </h2>
         <p className="text-gray-500 text-sm text-center leading-relaxed mb-6 px-2">
-          Great job. Your form has been completed and is ready to download, print, or review.
+          Great job. Please review it carefully before you print — you are responsible for making sure all your information is correct.
         </p>
 
-        {/* Download / Open PDF — same behavior as before */}
+        {/* Download / Open PDF */}
         <button
-          onClick={handleDownload}
-          className="w-full py-4 rounded-2xl font-bold text-white text-base shadow-md active:opacity-80 transition-opacity flex items-center justify-center gap-2 mb-4"
-          style={{ background: '#16a34a' }}
+          onClick={downloaded ? undefined : handleDownload}
+          disabled={downloaded}
+          className="w-full py-4 rounded-2xl font-bold text-white text-base shadow-md transition-opacity flex items-center justify-center gap-2 mb-4"
+          style={{ background: downloaded ? '#6b7280' : '#16a34a', cursor: downloaded ? 'default' : 'pointer' }}
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
+            {downloaded
+              ? <polyline points="20 6 9 17 4 12" />
+              : (<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>)
+            }
           </svg>
-          Download / Open PDF
+          {downloaded ? 'Downloaded ✓' : 'Download / Open PDF'}
         </button>
 
         {/* Reminder */}

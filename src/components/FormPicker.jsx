@@ -112,7 +112,7 @@ function HowItWorksModal({ onClose }) {
         <h2 className="font-bold text-xl mb-1" style={{ color: '#0d1b38' }}>How FillFormEZ works</h2>
         <p className="text-sm text-gray-400 mb-5">Simple. Private. Step by step.</p>
 
-        <div className="flex flex-col gap-4 mb-7">
+        <div className="flex flex-col gap-4 mb-5">
           {HOW_IT_WORKS.map((item) => (
             <div
               key={item.heading}
@@ -132,6 +132,11 @@ function HowItWorksModal({ onClose }) {
             </div>
           ))}
         </div>
+
+        {/* Non-affiliation note */}
+        <p className="text-xs text-center leading-relaxed mb-5" style={{ color: '#9ca3af' }}>
+          FillFormEZ does not submit forms and is not connected to any government agency.
+        </p>
 
         <button
           onClick={onClose}
@@ -191,6 +196,21 @@ const FORMS = [
         <path d="M16 7 L21 12 L16 17 L11 12 Z" fill="white" opacity="0.95" />
         <rect x="10" y="19.5" width="12" height="2" rx="1" fill="white" opacity="0.8" />
         <rect x="12" y="23" width="8" height="1.5" rx="0.75" fill="white" opacity="0.55" />
+      </svg>
+    ),
+  },
+  {
+    id: 'dl',
+    title: "Driver's Licence Application",
+    description: 'Apply for a Jamaican driver\'s licence using Form DL1.',
+    difficulty: 'Easy',
+    icon: (
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+        <rect x="2" y="7" width="28" height="18" rx="3" fill="#16a34a" />
+        <circle cx="10" cy="16" r="4" fill="white" opacity="0.9" />
+        <rect x="17" y="11" width="9" height="2" rx="1" fill="white" opacity="0.85" />
+        <rect x="17" y="15" width="7" height="2" rx="1" fill="white" opacity="0.6" />
+        <rect x="17" y="19" width="5" height="2" rx="1" fill="white" opacity="0.4" />
       </svg>
     ),
   },
@@ -288,14 +308,24 @@ export default function FormPicker({ onSelect }) {
           </button>
         </div>
 
-        {/* Privacy trust strip */}
-        <div className="flex items-start gap-2 mb-4">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          </svg>
-          <p className="text-xs text-gray-400 leading-snug">
-            Your information stays on your phone unless you choose to share or print it.
-          </p>
+        {/* Privacy + non-affiliation trust strip */}
+        <div className="flex flex-col gap-1 mb-4">
+          <div className="flex items-start gap-2">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            <p className="text-xs text-gray-400 leading-snug">
+              Your information stays on your phone unless you choose to share or print it.
+            </p>
+          </div>
+          <div className="flex items-start gap-2">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <p className="text-xs text-gray-400 leading-snug">
+              Independent helper tool — not a government service.
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-col gap-3">
