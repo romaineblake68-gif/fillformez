@@ -200,21 +200,6 @@ const FORMS = [
     ),
   },
   {
-    id: 'dl',
-    title: "Driver's Licence Application",
-    description: 'Apply for a Jamaican driver\'s licence using Form DL1.',
-    difficulty: 'Easy',
-    icon: (
-      <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-        <rect x="2" y="7" width="28" height="18" rx="3" fill="#16a34a" />
-        <circle cx="10" cy="16" r="4" fill="white" opacity="0.9" />
-        <rect x="17" y="11" width="9" height="2" rx="1" fill="white" opacity="0.85" />
-        <rect x="17" y="15" width="7" height="2" rx="1" fill="white" opacity="0.6" />
-        <rect x="17" y="19" width="5" height="2" rx="1" fill="white" opacity="0.4" />
-      </svg>
-    ),
-  },
-  {
     id: 'simplified-renewal',
     title: 'Simplified Passport Renewal',
     description: 'Renew your adult passport using the shorter simplified form.',

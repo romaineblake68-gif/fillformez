@@ -37,7 +37,6 @@ function AnalyticsPanel({ onClose }) {
     { label: 'Passport',            id: 'passport'           },
     { label: 'TRN',                 id: 'trn'                },
     { label: 'NIS',                 id: 'nis'                },
-    { label: "Driver's Licence",    id: 'dl'                 },
     { label: 'Simplified Renewal',  id: 'simplified-renewal' },
   ]
 

@@ -26,14 +26,8 @@ import NISFormReadyScreen from './screens/NISFormReadyScreen'
 import SimplifiedRenewalEligibilityScreen from './screens/SimplifiedRenewalEligibilityScreen'
 import SimplifiedRenewalFormReadyScreen from './screens/SimplifiedRenewalFormReadyScreen'
 
-// Driver's Licence flow screens
-import DLFormReadyScreen from './screens/DLFormReadyScreen'
-
 // DEV ONLY — uncomment to re-enable SR overlay calibration button
 // import SRTestButton from './components/SRTestButton'
-
-// DEV ONLY — DL overlay calibration button
-import DLTestButton from './components/DLTestButton'
 
 // Passport application flow screens
 import WelcomeScreen from './screens/WelcomeScreen'
@@ -75,7 +69,6 @@ import {
 import { TRN_QUESTIONS, TRN_START, TRN_BASE_COUNT } from './data/trnFlow'
 import { NIS_QUESTIONS, NIS_START, NIS_BASE_COUNT } from './data/nisFlow'
 import { SR_QUESTIONS, SR_START, SR_BASE_COUNT } from './data/simplifiedRenewalFlow'
-import { DL_QUESTIONS, DL_START, DL_BASE_COUNT } from './data/dlFlow'
 import { loadProfile, profileHasData, applyAutofill } from './utils/profileStorage'
 import { trackAppOpen, trackFormStart, trackFormComplete } from './utils/analytics'
 
@@ -135,9 +128,6 @@ const S = {
   SR_DECLARATION:       'sr-declaration',
   SR_FORM_READY:        'sr-form-ready',
 
-  DL_FLOW:              'dl-flow',
-  DL_FORM_READY:        'dl-form-ready',
-
   AUTOFILL_PROMPT:      'autofill-prompt',
 }
 
@@ -148,7 +138,6 @@ const HISTORY_KEY = 'fillformeasy_history_v1'
 const TRN_SAVE_KEY = 'trnFormProgress'
 const NIS_SAVE_KEY = 'nisFormProgress'
 const SR_SAVE_KEY  = 'srFormProgress'
-const DL_SAVE_KEY  = 'dlFormProgress'
 
 // Only save when the user has entered the real form sections (not pre-flow routing)
 const SAVEABLE_SCREENS = new Set([
@@ -472,20 +461,6 @@ export default function App() {
   const [srEligibilityBack, setSrEligibilityBack] = useState(S.HOME)
   const [showSRComingSoon, setShowSRComingSoon] = useState(false)
 
-  // ── Driver's Licence ──────────────────────────────────────────────────────
-  const [dlQId, setDlQId]         = useState(DL_START)
-  const [dlHistory, setDlHistory] = useState([])
-  const [dlAnswers, setDlAnswers] = useState({})
-  const [dlPdfUrl, setDlPdfUrl]   = useState(null)
-  const [savedDLProgress, setSavedDLProgress] = useState(() => {
-    try {
-      const raw = localStorage.getItem(DL_SAVE_KEY)
-      if (!raw) return null
-      const snap = JSON.parse(raw)
-      return snap?.currentStep ? snap : null
-    } catch { return null }
-  })
-
   const [savedSRProgress, setSavedSRProgress] = useState(() => {
     try {
       const raw = localStorage.getItem(SR_SAVE_KEY)
@@ -511,7 +486,6 @@ export default function App() {
       [TRN_SAVE_KEY, setSavedTRNProgress],
       [NIS_SAVE_KEY, setSavedNISProgress],
       [SR_SAVE_KEY,  setSavedSRProgress],
-      [DL_SAVE_KEY,  setSavedDLProgress],
     ]
     draftKeys.forEach(([key, clearState]) => {
       try {
@@ -544,13 +518,13 @@ export default function App() {
     // 1. Remove all localStorage keys that hold user data
     ;[
       SAVE_KEY, HISTORY_KEY,
-      TRN_SAVE_KEY, NIS_SAVE_KEY, SR_SAVE_KEY, DL_SAVE_KEY,
+      TRN_SAVE_KEY, NIS_SAVE_KEY, SR_SAVE_KEY,
       'fillformeez_analytics_v1',
       'fillformeez_profile_v1',
     ].forEach(key => { try { localStorage.removeItem(key) } catch {} })
 
     // 2. Revoke any active PDF blob URLs so the PDF data is freed from memory
-    ;[pdfUrl, trnPdfUrl, nisPdfUrl, srPdfUrl, dlPdfUrl].forEach(url => {
+    ;[pdfUrl, trnPdfUrl, nisPdfUrl, srPdfUrl].forEach(url => {
       if (url) { try { URL.revokeObjectURL(url) } catch {} }
     })
 
@@ -560,12 +534,10 @@ export default function App() {
     setSavedTRNProgress(null)
     setSavedNISProgress(null)
     setSavedSRProgress(null)
-    setSavedDLProgress(null)
     setPdfUrl(null)
     setTrnPdfUrl(null)
     setNisPdfUrl(null)
     setSrPdfUrl(null)
-    setDlPdfUrl(null)
     setAAnswers({})
     setBAnswers({})
     setCAnswers({})
@@ -575,7 +547,6 @@ export default function App() {
     setTrnAnswers({})
     setNisAnswers({})
     setSrAnswers({})
-    setDlAnswers({})
 
     goHome()
   }
@@ -635,15 +606,6 @@ export default function App() {
       setSrHistory([])
       setSrAnswers(newAnswers)
       setScreen(S.SR_FLOW)
-    } else if (type === 'dl') {
-      trackFormStart('dl', false)
-      const newAnswers = useProfile ? applyAutofill(profile, 'dl') : {}
-      try { localStorage.removeItem(DL_SAVE_KEY) } catch {}
-      setSavedDLProgress(null)
-      setDlQId(DL_START)
-      setDlHistory([])
-      setDlAnswers(newAnswers)
-      setScreen(S.DL_FLOW)
     }
     setPendingFormStart(null)
   }
@@ -1180,80 +1142,6 @@ export default function App() {
     setSrAnswers(newAnswers)
     setSrHistory((h) => h.slice(0, -1))
     setSrQId(prevId)
-  }
-
-  // ── Driver's Licence ──────────────────────────────────────────────────────
-
-  const startDLFlow = () => {
-    const profile = loadProfile()
-    if (profileHasData(profile)) {
-      setPendingFormStart({ type: 'dl' })
-      setScreen(S.AUTOFILL_PROMPT)
-    } else {
-      trackFormStart('dl', false)
-      try { localStorage.removeItem(DL_SAVE_KEY) } catch {}
-      setSavedDLProgress(null)
-      setDlQId(DL_START)
-      setDlHistory([])
-      setDlAnswers({})
-      setScreen(S.DL_FLOW)
-    }
-  }
-
-  const handleDLResume = () => {
-    if (!savedDLProgress) return
-    trackFormStart('dl', true)
-    setDlQId(savedDLProgress.currentStep || DL_START)
-    setDlAnswers(savedDLProgress.answers || {})
-    setDlHistory(savedDLProgress.history || [])
-    setScreen(S.DL_FLOW)
-  }
-
-  const handleDLAnswer = (value) => {
-    const questionId = dlQId
-    const newAnswers = { ...dlAnswers, [questionId]: value }
-    setDlAnswers(newAnswers)
-    const q = DL_QUESTIONS[questionId]
-    const nextId = q.next(value, newAnswers)
-    if (nextId === null) {
-      trackFormComplete('dl')
-      try { localStorage.removeItem(DL_SAVE_KEY) } catch {}
-      setSavedDLProgress(null)
-      const entry = {
-        name: "Driver's Licence Application",
-        completedAt: Date.now(),
-        applicantName: [newAnswers.dlFirstNames, newAnswers.dlLastName].filter(Boolean).join(' '),
-      }
-      const updated = [entry, ...completedForms]
-      setCompletedForms(updated)
-      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(updated)) } catch {}
-      import('./utils/dlPdfGenerator').then(({ generateDLPDF }) =>
-        generateDLPDF(newAnswers)
-          .then(url => setDlPdfUrl(url))
-          .catch(err => console.error('[DL] PDF generation failed:', err))
-      )
-      setScreen(S.DL_FORM_READY)
-    } else {
-      const newHistory = [...dlHistory, questionId]
-      setDlHistory(newHistory)
-      setDlQId(nextId)
-      try {
-        const pct = Math.min(99, Math.round((newHistory.length / DL_BASE_COUNT) * 100))
-        const snap = { currentStep: nextId, answers: newAnswers, history: newHistory, savedAt: Date.now(), pct }
-        localStorage.setItem(DL_SAVE_KEY, JSON.stringify(snap))
-        setSavedDLProgress(snap)
-      } catch {}
-    }
-  }
-
-  const handleDLBack = () => {
-    if (dlHistory.length === 0) { goHome(); return }
-    const prevId = dlHistory[dlHistory.length - 1]
-    const newAnswers = { ...dlAnswers }
-    delete newAnswers[dlQId]
-    setDlAnswers(newAnswers)
-    setDlHistory((h) => h.slice(0, -1))
-    setDlQId(prevId)
   }
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -1851,30 +1739,6 @@ export default function App() {
       )
 
     // ── Driver's Licence ──────────────────────────────────────────────
-    case S.DL_FLOW:
-      return (
-        <QuestionScreen
-          questionId={dlQId}
-          questions={DL_QUESTIONS}
-          baseCount={DL_BASE_COUNT}
-          onAnswer={handleDLAnswer}
-          onBack={handleDLBack}
-          onHome={goHome}
-          answers={dlAnswers}
-        />
-      )
-
-    case S.DL_FORM_READY:
-      return (
-        <DLFormReadyScreen
-          pdfUrl={dlPdfUrl}
-          onBack={() => setScreen(S.DL_FORM_READY)}
-          onViewHistory={() => { setScreen(S.HOME); setActiveTab('history') }}
-          onStartAnother={goHome}
-          onHome={goHome}
-        />
-      )
-
     // ── Autofill prompt ───────────────────────────────────────────────
     case S.AUTOFILL_PROMPT:
       return (
@@ -1887,7 +1751,6 @@ export default function App() {
             if (type === 'trn') setScreen(S.TRN_WELCOME)
             else if (type === 'nis') setScreen(S.NIS_WELCOME)
             else if (type === 'simplified-renewal') setScreen(S.HOME)
-            else if (type === 'dl') setScreen(S.HOME)
             else setScreen(S.FORM_TYPE_EXPLAIN)
           }}
         />
@@ -1928,13 +1791,6 @@ export default function App() {
           label: null,
           pct: savedSRProgress.pct ?? Math.min(99, Math.round(((savedSRProgress.history?.length ?? 0) / SR_BASE_COUNT) * 100)),
           savedAt: savedSRProgress.savedAt ?? null,
-        }] : []),
-        ...(savedDLProgress ? [{
-          id: 'dl',
-          name: "Driver's Licence Application",
-          label: null,
-          pct: savedDLProgress.pct ?? Math.min(99, Math.round(((savedDLProgress.history?.length ?? 0) / DL_BASE_COUNT) * 100)),
-          savedAt: savedDLProgress.savedAt ?? null,
         }] : []),
       ]
 
@@ -1980,20 +1836,11 @@ export default function App() {
                     onResume={handleSRResume}
                   />
                 )}
-                {savedDLProgress && (
-                  <DraftResumeCard
-                    formName="Driver's Licence Application"
-                    pct={savedDLProgress.pct ?? null}
-                    savedAtLabel={savedDLProgress.savedAt ? formatSavedAt(savedDLProgress.savedAt) : null}
-                    onResume={handleDLResume}
-                  />
-                )}
                 <FormPicker
                   onSelect={(formId) => {
                     if (formId === 'passport') setScreen(S.WELCOME)
                     else if (formId === 'trn') setScreen(S.TRN_WELCOME)
                     else if (formId === 'nis') setScreen(S.NIS_WELCOME)
-                    else if (formId === 'dl') startDLFlow()
                     else if (formId === 'simplified-renewal') {
                       // SR flow locked — FormPicker's comingSoon flag intercepts the tap;
                       // this branch is intentionally unreachable while SR is Coming Soon
@@ -2013,7 +1860,6 @@ export default function App() {
                   else if (id === 'trn') handleTRNResume()
                   else if (id === 'nis') handleNISResume()
                   else if (id === 'simplified-renewal') handleSRResume()
-                  else if (id === 'dl') handleDLResume()
                 }}
                 onStartForm={() => setActiveTab('home')}
               />
@@ -2024,7 +1870,6 @@ export default function App() {
           {showOnboarding && <OnboardingModal onDone={handleOnboardingDone} />}
           {/* DEV ONLY — uncomment when calibrating SR PDF overlay */}
           {/* <SRTestButton /> */}
-          <DLTestButton />
         </div>
       )
     }
