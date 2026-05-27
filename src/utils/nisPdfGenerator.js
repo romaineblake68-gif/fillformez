@@ -21,6 +21,8 @@ function fmtDate(day, month, year) {
   return `${year}-${MONTH_NUM[month] || pad2(month)}-${pad2(day)}`
 }
 
+const NO_UPPERCASE = new Set(['Email Address'])
+
 // Fill a text field with black 8pt text.
 // Overrides the DA string directly so any coloured DA from the original PDF
 // cannot survive into the generated appearance.
@@ -32,7 +34,8 @@ function setText(form, name, value) {
       PDFName.of('DA'),
       PDFString.of('/Helvetica 8 Tf 0 0 0 rg'),
     )
-    field.setText(String(value).trim())
+    const str = String(value).trim()
+    field.setText(NO_UPPERCASE.has(name) ? str : str.toUpperCase())
   } catch (e) {
     console.warn('[NIS] setText failed:', name, e.message)
   }

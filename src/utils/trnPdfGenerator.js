@@ -21,6 +21,8 @@ function fmtYear(year) {
   return ok(year) ? String(year).trim() : null
 }
 
+const NO_UPPERCASE = new Set(['11c_Email'])
+
 // Fill a text field with black 8pt text.
 // Overrides the field's DA string directly so any blue DA in the original PDF
 // is replaced unconditionally before setText() is called.
@@ -34,7 +36,8 @@ function setText(form, name, value) {
       PDFName.of('DA'),
       PDFString.of('/Helvetica 8 Tf 0 0 0 rg'),
     )
-    field.setText(String(value).trim())
+    const str = String(value).trim()
+    field.setText(NO_UPPERCASE.has(name) ? str : str.toUpperCase())
   } catch (e) {
     console.warn('[TRN] setText failed:', name, e.message)
   }

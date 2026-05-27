@@ -78,6 +78,7 @@ import './index.css'
 const S = {
   HOME:                 'home',
   WELCOME:              'welcome',
+  APPLICATION_TYPE:     'application-type',
   FIRST_OR_RENEWAL:     'first-or-renewal',
   RENEWAL_AGE:          'renewal-age',
   RENEWAL_NAME:         'renewal-name',
@@ -373,6 +374,7 @@ export default function App() {
   const [formTypeReason, setFormTypeReason]   = useState('first-time')
   const [formTypeBackScreen, setFormTypeBack] = useState(S.FIRST_OR_RENEWAL)
   const [isFirstTime, setIsFirstTime]         = useState(null)
+  const [applicationType, setApplicationType] = useState(null)
 
   // Section A
   const [currentAQId, setCurrentAQId]     = useState(SECTION_A_START)
@@ -639,7 +641,7 @@ export default function App() {
     if (!SAVEABLE_SCREENS.has(screen)) return
     const snap = {
       savedAt: Date.now(), screen,
-      formType, formTypeReason, formTypeBackScreen, isFirstTime,
+      formType, formTypeReason, formTypeBackScreen, isFirstTime, applicationType,
       currentAQId, aHistory, aAnswers, aReturnScreen,
       currentBQId, bHistory, bAnswers,
       currentCQId, cHistory, cAnswers,
@@ -656,7 +658,7 @@ export default function App() {
       console.warn('[FillFormEasy] Could not save progress:', e.message)
     }
   }, [ // eslint-disable-line react-hooks/exhaustive-deps
-    screen, formType, formTypeReason, formTypeBackScreen, isFirstTime,
+    screen, formType, formTypeReason, formTypeBackScreen, isFirstTime, applicationType,
     currentAQId, aHistory, aAnswers, aReturnScreen,
     currentBQId, bHistory, bAnswers,
     currentCQId, cHistory, cAnswers,
@@ -677,6 +679,7 @@ export default function App() {
     setFormTypeReason(s.formTypeReason ?? 'first-time')
     setFormTypeBack(s.formTypeBackScreen ?? S.FIRST_OR_RENEWAL)
     setIsFirstTime(s.isFirstTime ?? null)
+    setApplicationType(s.applicationType ?? null)
     setCurrentAQId(s.currentAQId ?? SECTION_A_START)
     setAHistory(s.aHistory ?? [])
     setAAnswers(s.aAnswers ?? {})
@@ -712,6 +715,7 @@ export default function App() {
     setFormTypeReason('first-time')
     setFormTypeBack(S.FIRST_OR_RENEWAL)
     setIsFirstTime(null)
+    setApplicationType(null)
     setCurrentAQId(SECTION_A_START)
     setAHistory([])
     setAAnswers({})
@@ -1151,8 +1155,27 @@ export default function App() {
     case S.WELCOME:
       return (
         <WelcomeScreen
-          onStart={() => setScreen(S.FIRST_OR_RENEWAL)}
+          onStart={() => setScreen(S.APPLICATION_TYPE)}
           onBack={goHome}
+        />
+      )
+
+    case S.APPLICATION_TYPE:
+      return (
+        <RoutingScreen
+          question="What type of passport application is this?"
+          buttons={[
+            { label: 'First time applying for a passport',      value: 'first-time'   },
+            { label: 'Renewal — I still have my old passport',  value: 'renewal'      },
+            { label: 'Replacement — lost, stolen, or damaged',  value: 'replacement'  },
+          ]}
+          onSelect={(val) => {
+            setApplicationType(val)
+            setIsFirstTime(val === 'first-time')
+            setFormType('regular')
+            startSectionA(S.APPLICATION_TYPE)
+          }}
+          onBack={() => setScreen(S.WELCOME)}
         />
       )
 
@@ -1738,7 +1761,6 @@ export default function App() {
         />
       )
 
-    // ── Driver's Licence ──────────────────────────────────────────────
     // ── Autofill prompt ───────────────────────────────────────────────
     case S.AUTOFILL_PROMPT:
       return (
@@ -1751,7 +1773,7 @@ export default function App() {
             if (type === 'trn') setScreen(S.TRN_WELCOME)
             else if (type === 'nis') setScreen(S.NIS_WELCOME)
             else if (type === 'simplified-renewal') setScreen(S.HOME)
-            else setScreen(S.FORM_TYPE_EXPLAIN)
+            else setScreen(S.APPLICATION_TYPE)
           }}
         />
       )

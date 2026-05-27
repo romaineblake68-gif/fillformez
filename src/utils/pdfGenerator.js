@@ -25,10 +25,13 @@ function ok(val) { return val && val !== SKIP && String(val).trim() !== '' }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+const NO_UPPERCASE = new Set(['Email_Address'])
+
 function setText(form, name, value) {
   if (!ok(value)) return
   try {
-    form.getTextField(name).setText(String(value).trim())
+    const str = String(value).trim()
+    form.getTextField(name).setText(NO_UPPERCASE.has(name) ? str : str.toUpperCase())
   } catch (e) {
     console.warn('[FillFormEasy] setText failed:', name, e.message)
   }
@@ -186,8 +189,8 @@ export async function generatePassportPDF({
   ].forEach(name => {
     try { form.getTextField(name).acroField.dict.delete(PDFName.of('MaxLen')) } catch {}
   })
-  const permStreet = aAnswers.streetAddress
-  const permTown   = [aAnswers.postOffice, aAnswers.townParish].filter(ok).join(', ')
+  const permStreet = [aAnswers.streetAddress, aAnswers.postOffice].filter(ok).join(', ')
+  const permTown   = aAnswers.townParish
   // permStreet and permTown are drawn manually in the comb rendering section below
   setText(form, 'Applicant_Permanent_Country', aAnswers.country || 'Jamaica')
 
@@ -325,11 +328,14 @@ export async function generatePassportPDF({
   setText(form, 'Emergency_First_Contact_Surname',    f1Answers.f1Surname)
   setText(form, 'Emergency_First_Contact_Firstname',  f1Answers.f1FirstName)
   setText(form, 'Emergency_First_Contact_Middlename', f1Answers.f1MiddleName)
-  setText(form, 'Emergency_First_Contact_Address1',   f1Answers.f1Address)
+  // Street field = street/community + P.O. Box combined; town field = parish only.
+  // Address comb fields have MaxLen 17 — delete it so manual rendering can overflow to row 2.
+  const f1Street = [f1Answers.f1Address, f1Answers.f1PostOffice].filter(ok).join(', ')
   let f1Town = f1Answers.f1Parish === 'Outside Jamaica'
     ? f1Answers.f1CityAbroad
-    : [f1Answers.f1PostOffice, f1Answers.f1Parish].filter(ok).join(', ')
-  ;['Emergency_First_Contact_Town1', 'Emergency_First_Contact_Town2'].forEach(name => {
+    : f1Answers.f1Parish
+  ;['Emergency_First_Contact_Address1', 'Emergency_First_Contact_Address2',
+    'Emergency_First_Contact_Town1',   'Emergency_First_Contact_Town2'].forEach(name => {
     try { form.getTextField(name).acroField.dict.delete(PDFName.of('MaxLen')) } catch {}
   })
   setText(form, 'Emergency_First_Contact_Country',    f1Answers.f1Country || 'Jamaica')
@@ -340,11 +346,12 @@ export async function generatePassportPDF({
   setText(form, 'Emergency_Second_Contact_Surname',    f2Answers.f2Surname)
   setText(form, 'Emergency_Second_Contact_Firstname',  f2Answers.f2FirstName)
   setText(form, 'Emergency_Second_Contact_Middlename', f2Answers.f2MiddleName)
-  setText(form, 'Emergency_Second_Contact_Address1',   f2Answers.f2Address)
+  const f2Street = [f2Answers.f2Address, f2Answers.f2PostOffice].filter(ok).join(', ')
   let f2Town = f2Answers.f2Parish === 'Outside Jamaica'
     ? f2Answers.f2CityAbroad
-    : [f2Answers.f2PostOffice, f2Answers.f2Parish].filter(ok).join(', ')
-  ;['Emergency_Second_Contact_Town1', 'Emergency_Second_Contact_Town2'].forEach(name => {
+    : f2Answers.f2Parish
+  ;['Emergency_Second_Contact_Address1', 'Emergency_Second_Contact_Address2',
+    'Emergency_Second_Contact_Town1',   'Emergency_Second_Contact_Town2'].forEach(name => {
     try { form.getTextField(name).acroField.dict.delete(PDFName.of('MaxLen')) } catch {}
   })
   setText(form, 'Emergency_Second_Contact_Country',    f2Answers.f2Country || 'Jamaica')
@@ -376,7 +383,7 @@ export async function generatePassportPDF({
   if (ok(permStreet)) {
     const STREET_ROW_LEN = 17
     const FONT_SIZE_STREET = 9
-    const sStr = String(permStreet).trim()
+    const sStr = String(permStreet).trim().toUpperCase()
     const streetRows = [
       { name: 'Applicant_Permanent_Address',  text: sStr.slice(0, STREET_ROW_LEN) },
       { name: 'Applicant_Permanent_Address1', text: sStr.slice(STREET_ROW_LEN, STREET_ROW_LEN * 2) },
@@ -419,7 +426,7 @@ export async function generatePassportPDF({
   // removes the annotation without painting text over the form.
   if (ok(permTown)) {
     const TOWN_ROW_LEN = 17
-    const str = String(permTown).trim()
+    const str = String(permTown).trim().toUpperCase()
     const FONT_SIZE_TOWN = 9
     const townRows = [
       { name: 'Applicant_Permanent_Town',  text: str.slice(0, TOWN_ROW_LEN) },
@@ -507,7 +514,7 @@ export async function generatePassportPDF({
     { town: f2Town, rows: ['Emergency_Second_Contact_Town1', 'Emergency_Second_Contact_Town2'] },
   ].forEach(({ town, rows }) => {
     if (!ok(town)) return
-    const ctStr = String(town).trim()
+    const ctStr = String(town).trim().toUpperCase()
     rows.forEach((name, ri) => {
       try {
         const field = form.getTextField(name)
@@ -533,6 +540,50 @@ export async function generatePassportPDF({
           const x = rect.x + i * cellW + (cellW - charW) / 2
           const y = rect.y + (rect.height - FONT_SIZE_CT) / 2
           try { page.drawText(ch, { x, y, size: FONT_SIZE_CT, font: helvetica, color: rgb(0, 0, 0) }) } catch {}
+        })
+
+        try { widget.dict.delete(PDFName.of('MK')) } catch {}
+        try { widget.dict.delete(PDFName.of('AP')) } catch {}
+      } catch {}
+    })
+  })
+
+  // ── Emergency Contact Address — manual two-row comb rendering (MaxLen 17 per row) ─
+  // Field naming follows the 1-indexed Town pattern (Town1/Town2), not the applicant
+  // Address pattern (Address/Address1). Address1 = row 1, Address2 = row 2.
+  const CONTACT_ADDR_ROW_LEN = 17
+  const FONT_SIZE_CA = 9
+  ;[
+    { street: f1Street, rows: ['Emergency_First_Contact_Address1',  'Emergency_First_Contact_Address2'] },
+    { street: f2Street, rows: ['Emergency_Second_Contact_Address1', 'Emergency_Second_Contact_Address2'] },
+  ].forEach(({ street, rows }) => {
+    if (!ok(street)) return
+    const caStr = String(street).trim().toUpperCase()
+    rows.forEach((name, ri) => {
+      try {
+        const field = form.getTextField(name)
+        const widget = field.acroField.getWidgets()[0]
+        if (!widget) return
+        const pi = widgetPage.get(widget.dict) ?? 0
+        const page = pages[pi]
+        const rect = widget.getRectangle()
+        const text = caStr.slice(ri * CONTACT_ADDR_ROW_LEN, (ri + 1) * CONTACT_ADDR_ROW_LEN)
+        const cellW = rect.width / CONTACT_ADDR_ROW_LEN
+
+        for (let i = 0; i < CONTACT_ADDR_ROW_LEN; i++) {
+          page.drawRectangle({
+            x: rect.x + i * cellW, y: rect.y,
+            width: cellW, height: rect.height,
+            borderColor: rgb(0, 0, 0), borderWidth: 0.5,
+          })
+        }
+
+        ;[...text].forEach((ch, i) => {
+          if (i >= CONTACT_ADDR_ROW_LEN) return
+          const charW = helvetica.widthOfTextAtSize(ch, FONT_SIZE_CA)
+          const x = rect.x + i * cellW + (cellW - charW) / 2
+          const y = rect.y + (rect.height - FONT_SIZE_CA) / 2
+          try { page.drawText(ch, { x, y, size: FONT_SIZE_CA, font: helvetica, color: rgb(0, 0, 0) }) } catch {}
         })
 
         try { widget.dict.delete(PDFName.of('MK')) } catch {}

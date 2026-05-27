@@ -95,7 +95,7 @@ const FIELDS = {
   // workPhone:      { x: 258, y: B.phones,          size: 8  }, // Phase 2
   cellPhone:        { x: 420, y: B.phones,          size: 8  }, // APPROX
 
-  email:            { x:  96, y: B.email,           size: 9  }, // APPROX
+  email:            { x:  96, y: B.email,           size: 9, noUpper: true }, // APPROX
 
   // ── Page 2 — all sections disabled for Phase 1 calibration ────────────────
   // Uncomment in Phase 2 after Page 1 coordinates are confirmed.
@@ -144,7 +144,8 @@ const MONTH_NUM = {
 
 function draw(page, field, value, font) {
   if (!ok(value)) return
-  page.drawText(String(value).trim(), {
+  const str = String(value).trim()
+  page.drawText(field.noUpper ? str : str.toUpperCase(), {
     x:     field.x,
     y:     field.y,
     size:  field.size || 9,

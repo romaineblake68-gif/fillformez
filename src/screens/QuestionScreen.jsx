@@ -480,7 +480,12 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
 
   const handleChoiceSelect = (option) => {
     setNameCorrected(false)
-    goToConfirming(option, true)
+    if (option === 'Other') {
+      stopSpeaking()
+      setPhase('other-text')
+    } else {
+      goToConfirming(option, true)
+    }
   }
 
   const handleTypedSubmit = (text) => {
@@ -597,6 +602,8 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
               setSuggestedNames([])
               setPhase('question')
               setTranscript('')
+            } else if (phase === 'other-text') {
+              setPhase('question')
             } else {
               onBack()
             }
@@ -781,6 +788,14 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
             onSelect={handleChoiceSelect}
             speak={speak}
           />
+        )}
+
+        {/* ── OTHER free-text entry ────────────────────────────────────── */}
+        {phase === 'other-text' && (
+          <div className="flex flex-col items-center gap-4 w-full">
+            <p className="text-sm font-semibold text-gray-500 text-center">Please type the parish or location below.</p>
+            <TextFallback key="other-text" onSubmit={(text) => { setNameCorrected(false); goToConfirming(text, true) }} highlight />
+          </div>
         )}
 
         {/* ── NAME SUGGESTIONS ─────────────────────────────────────────── */}

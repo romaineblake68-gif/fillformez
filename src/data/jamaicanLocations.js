@@ -1,18 +1,19 @@
 export const PARISHES = [
-  'Clarendon',
-  'Hanover',
   'Kingston',
-  'Manchester',
-  'Portland',
   'St. Andrew',
-  'St. Ann',
-  'St. Catherine',
-  'St. Elizabeth',
-  'St. James',
-  'St. Mary',
   'St. Thomas',
+  'Portland',
+  'St. Mary',
+  'St. Ann',
   'Trelawny',
+  'St. James',
+  'Hanover',
   'Westmoreland',
+  'St. Elizabeth',
+  'Manchester',
+  'Clarendon',
+  'St. Catherine',
+  'Other',
 ]
 
 export const COMMUNITIES = {
