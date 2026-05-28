@@ -1,60 +1,6 @@
 import { useState } from 'react'
 import { loadAnalytics } from '../utils/analytics'
 
-// ── DEV-ONLY: Passport PDF quick-test panel ───────────────────────────────────
-// Visible only in development (import.meta.env.DEV = false in production builds).
-// To remove: delete DevPassportPanel and the {import.meta.env.DEV && ...} line below.
-
-function DevPassportPanel() {
-  const [loading, setLoading] = useState('')
-  const [error, setError]     = useState(null)
-
-  const run = async (variant) => {
-    setLoading(variant)
-    setError(null)
-    try {
-      const { runDevPassportTest } = await import('../utils/devPassportTestData.js')
-      await runDevPassportTest(variant)
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setLoading('')
-    }
-  }
-
-  return (
-    <div
-      className="mx-4 mb-4 rounded-2xl px-4 py-4"
-      style={{ background: '#fefce8', border: '1.5px dashed #fbbf24' }}
-    >
-      <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#92400e' }}>
-        DEV — Passport PDF Test
-      </p>
-      <div className="flex flex-col gap-2">
-        <button
-          onClick={() => run('first-time')}
-          disabled={!!loading}
-          className="w-full py-3 rounded-xl font-bold text-sm active:opacity-70 disabled:opacity-50"
-          style={{ background: '#fbbf24', color: '#1c1917' }}
-        >
-          {loading === 'first-time' ? 'Generating…' : '[DEV] Generate Passport Test PDF — First Time'}
-        </button>
-        <button
-          onClick={() => run('renewal')}
-          disabled={!!loading}
-          className="w-full py-3 rounded-xl font-bold text-sm active:opacity-70 disabled:opacity-50"
-          style={{ background: '#fbbf24', color: '#1c1917' }}
-        >
-          {loading === 'renewal' ? 'Generating…' : '[DEV] Generate Passport Test PDF — Renewal'}
-        </button>
-      </div>
-      {error && (
-        <p className="text-xs font-semibold mt-3 text-red-600 break-all">{error}</p>
-      )}
-    </div>
-  )
-}
-
 // ── Admin analytics panel ─────────────────────────────────────────────────────
 // Hidden behind a 5-tap on the version label. Admin/owner only.
 
@@ -258,9 +204,6 @@ export default function WalletScreen() {
           </p>
         </div>
       </div>
-
-      {/* DEV-ONLY: Passport PDF test panel — not visible in production */}
-      {import.meta.env.DEV && <DevPassportPanel />}
 
       {/* Hidden admin trigger — tap 5× to open analytics */}
       <button
