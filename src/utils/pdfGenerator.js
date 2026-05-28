@@ -468,7 +468,7 @@ export async function generatePassportPDF({
   // Each row field has 14 boxes (MaxLen 14). Characters overflow row 1 → row 2.
   if (ok(marriagePlaceFull)) {
     const MARRIAGE_ROW_LEN = 14
-    const mStr = String(marriagePlaceFull).trim()
+    const mStr = String(marriagePlaceFull).trim().toUpperCase()
     const FONT_SIZE_M = 9
     const marriageRows = [
       { name: 'Applicant_Place_of_Marriage',  text: mStr.slice(0, MARRIAGE_ROW_LEN) },
@@ -661,8 +661,34 @@ export async function generatePassportPDF({
   })
 
   // Bake non-comb field values into permanent page content.
-  // Comb fields have no AP so flatten() removes their annotations without drawing.
   form.updateFieldAppearances(helvetica)
+
+  // updateFieldAppearances() regenerates AP for every field — including the comb
+  // fields we already rendered manually above. Re-delete AP from all of them now
+  // so flatten() removes those annotations cleanly without painting over the
+  // characters we drew directly on the page.
+  form.getFields().forEach(field => {
+    if (!(field instanceof PDFTextField) || !field.isCombed()) return
+    field.acroField.getWidgets().forEach(widget => {
+      try { widget.dict.delete(PDFName.of('AP')) } catch {}
+    })
+  })
+  ;[
+    'Applicant_Permanent_Address',  'Applicant_Permanent_Address1',
+    'Applicant_Permanent_Town',     'Applicant_Permanent_Town1',
+    'Applicant_Place_of_Marriage',  'Applicant_Place_of_Marriage1',
+    'Emergency_First_Contact_Address1',  'Emergency_First_Contact_Address2',
+    'Emergency_First_Contact_Town1',     'Emergency_First_Contact_Town2',
+    'Emergency_Second_Contact_Address1', 'Emergency_Second_Contact_Address2',
+    'Emergency_Second_Contact_Town1',    'Emergency_Second_Contact_Town2',
+  ].forEach(name => {
+    try {
+      form.getTextField(name).acroField.getWidgets().forEach(widget => {
+        try { widget.dict.delete(PDFName.of('AP')) } catch {}
+      })
+    } catch {}
+  })
+
   form.flatten()
 
   // ── Save and return blob URL ───────────────────────────────────────────────

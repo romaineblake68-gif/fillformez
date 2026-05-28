@@ -1268,6 +1268,7 @@ export default function App() {
           onBack={handleABack}
           onHome={goHome}
           answers={aAnswers}
+          overallPct={computeProgress({ screen: S.SECTION_A, currentAQId }).pct}
         />
       )
 
@@ -1292,6 +1293,7 @@ export default function App() {
           onBack={handleBBack}
           onHome={goHome}
           answers={bAnswers}
+          overallPct={computeProgress({ screen: S.SECTION_B, currentBQId }).pct}
         />
       )
 
@@ -1345,6 +1347,7 @@ export default function App() {
           onBack={handleCBack}
           onHome={goHome}
           answers={cAnswers}
+          overallPct={computeProgress({ screen: S.SECTION_C, currentCQId }).pct}
         />
       )
 
@@ -1397,6 +1400,7 @@ export default function App() {
           onBack={handleDBack}
           onHome={goHome}
           answers={dAnswers}
+          overallPct={computeProgress({ screen: S.SECTION_D, currentDQId }).pct}
         />
       )
 
@@ -1494,6 +1498,7 @@ export default function App() {
           onBack={handleF1Back}
           onHome={goHome}
           answers={f1Answers}
+          overallPct={computeProgress({ screen: S.SECTION_F_CONTACT1, currentF1QId }).pct}
         />
       )
 
@@ -1514,6 +1519,7 @@ export default function App() {
           onBack={handleF2Back}
           onHome={goHome}
           answers={f2Answers}
+          overallPct={computeProgress({ screen: S.SECTION_F_CONTACT2, currentF2QId }).pct}
         />
       )
 

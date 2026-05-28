@@ -324,7 +324,7 @@ function parseConfirmCommand(rawText) {
 
 // ── Main QuestionScreen ───────────────────────────────────────────────────────
 
-export default function QuestionScreen({ questionId, questions = SECTION_A_QUESTIONS, baseCount = SECTION_A_BASE_COUNT, onAnswer, onBack, onHome, answers = {} }) {
+export default function QuestionScreen({ questionId, questions = SECTION_A_QUESTIONS, baseCount = SECTION_A_BASE_COUNT, onAnswer, onBack, onHome, answers = {}, overallPct = null }) {
   const question = questions[questionId]
   // Spoken text may differ from displayed text (e.g. "N I S" vs "NIS").
   const qSpeech = question.speechText ?? question.text
@@ -484,7 +484,14 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
       stopSpeaking()
       setPhase('other-text')
     } else {
-      goToConfirming(option, true)
+      // Button tap (yes/no or choice grid) — skip confirmation, go straight to next question
+      stopSpeaking()
+      setValidationError(null)
+      if (question.validate) {
+        const err = question.validate(option)
+        if (err) { setValidationError(err); return }
+      }
+      onAnswer(question.id, option)
     }
   }
 
@@ -672,6 +679,20 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
             style={{ width: `${progressPct}%`, background: '#16a34a' }}
           />
         </div>
+        {overallPct != null && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs text-gray-400 shrink-0">Full form</span>
+            <div className="flex-1 h-1 rounded-full bg-gray-100 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${overallPct}%`, background: '#16a34a', opacity: 0.45 }}
+              />
+            </div>
+            <span className="text-xs font-semibold shrink-0" style={{ color: '#16a34a' }}>
+              {overallPct}%
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Main body */}
@@ -783,11 +804,21 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
 
         {/* ── CHOICE grid ───────────────────────────────────────────────── */}
         {phase === 'question' && question.type === 'choice' && (
-          <ChoiceGrid
-            options={question.getOptions ? question.getOptions(answers) : question.options}
-            onSelect={handleChoiceSelect}
-            speak={speak}
-          />
+          <div className="flex flex-col items-center gap-3 w-full">
+            <ChoiceGrid
+              options={question.getOptions ? question.getOptions(answers) : question.options}
+              onSelect={handleChoiceSelect}
+              speak={speak}
+            />
+            {question.canSkip && (
+              <button
+                onClick={handleSkip}
+                className="text-gray-400 font-semibold text-sm underline underline-offset-2 active:opacity-60 mt-1"
+              >
+                {SKIP_LABEL}
+              </button>
+            )}
+          </div>
         )}
 
         {/* ── OTHER free-text entry ────────────────────────────────────── */}
