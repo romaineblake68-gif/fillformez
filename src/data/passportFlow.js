@@ -174,6 +174,12 @@ export const SECTION_A_QUESTIONS = {
     text: 'What year were you born?',
     hint: 'Say the full year. For example: "nineteen eighty five" or "two thousand and one".',
     type: 'voice',
+    validate: (v) => {
+      const n = parseInt(v, 10)
+      if (isNaN(n)) return null // let voice flow handle non-numeric
+      if (n > new Date().getFullYear()) return 'That year is in the future. Please enter your real birth year.'
+      return null
+    },
     next: () => 'sex',
   },
 

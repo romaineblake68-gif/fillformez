@@ -30,8 +30,26 @@ const NO_UPPERCASE = new Set(['Email_Address'])
 function setText(form, name, value) {
   if (!ok(value)) return
   try {
-    const str = String(value).trim()
-    form.getTextField(name).setText(NO_UPPERCASE.has(name) ? str : str.toUpperCase())
+    const str   = String(value).trim()
+    const upper = NO_UPPERCASE.has(name) ? str : str.toUpperCase()
+    const field = form.getTextField(name)
+    // pdf-lib throws if a comb field's value exceeds its MaxLen.
+    // Temporarily remove MaxLen so the length check is bypassed, then restore it
+    // so the field stays combed and the general comb-loop renders it with its boxes.
+    let savedMaxLen = null
+    if (field.isCombed()) {
+      try {
+        const ml = field.acroField.dict.lookup(PDFName.of('MaxLen'))
+        if (ml && upper.length > ml.asNumber()) {
+          savedMaxLen = ml
+          field.acroField.dict.delete(PDFName.of('MaxLen'))
+        }
+      } catch {}
+    }
+    field.setText(upper)
+    if (savedMaxLen !== null) {
+      try { field.acroField.dict.set(PDFName.of('MaxLen'), savedMaxLen) } catch {}
+    }
   } catch (e) {
     console.warn('[FillFormEasy] setText failed:', name, e.message)
   }
@@ -426,7 +444,7 @@ export async function generatePassportPDF({
   // removes the annotation without painting text over the form.
   if (ok(permTown)) {
     const TOWN_ROW_LEN = 17
-    const str = String(permTown).trim().toUpperCase()
+    const str = String(permTown).trim().toUpperCase().replace(/\s+/g, '')
     const FONT_SIZE_TOWN = 9
     const townRows = [
       { name: 'Applicant_Permanent_Town',  text: str.slice(0, TOWN_ROW_LEN) },
@@ -514,7 +532,7 @@ export async function generatePassportPDF({
     { town: f2Town, rows: ['Emergency_Second_Contact_Town1', 'Emergency_Second_Contact_Town2'] },
   ].forEach(({ town, rows }) => {
     if (!ok(town)) return
-    const ctStr = String(town).trim().toUpperCase()
+    const ctStr = String(town).trim().toUpperCase().replace(/\s+/g, '')
     rows.forEach((name, ri) => {
       try {
         const field = form.getTextField(name)
@@ -592,12 +610,15 @@ export async function generatePassportPDF({
     })
   })
 
-  // For every comb text field:
+  // For every comb text field that has a value set:
   //   1. Draw each cell border as a permanent rectangle on the page
   //   2. Draw each character centred inside its cell
   //   3. Clear the field value, strip MK + AP, so flatten() removes the
   //      annotation without painting any appearance over the drawn borders.
+  // Fields with no value are NOT touched — their original AP is preserved so
+  // flatten() renders the original empty-box design instead of blank space.
   const FONT_SIZE = 9
+  const drawnCombFields = new Set()
   form.getFields().forEach(field => {
     if (!(field instanceof PDFTextField) || !field.isCombed()) return
 
@@ -647,6 +668,7 @@ export async function generatePassportPDF({
       try { widget.dict.delete(PDFName.of('AP')) } catch {}
     })
 
+    drawnCombFields.add(field)
     try { field.setText('') } catch {}
   })
 
@@ -663,20 +685,19 @@ export async function generatePassportPDF({
   // Bake non-comb field values into permanent page content.
   form.updateFieldAppearances(helvetica)
 
-  // updateFieldAppearances() regenerates AP for every field — including the comb
-  // fields we already rendered manually above. Re-delete AP from all of them now
-  // so flatten() removes those annotations cleanly without painting over the
-  // characters we drew directly on the page.
-  form.getFields().forEach(field => {
-    if (!(field instanceof PDFTextField) || !field.isCombed()) return
+  // updateFieldAppearances() regenerates AP for fields that were drawn (they had
+  // their value cleared to '' so needsAppearancesUpdate() returns true).
+  // Re-delete AP only from those drawn fields — empty optional fields must keep
+  // their original AP so flatten() renders the original empty-box design.
+  drawnCombFields.forEach(field => {
     field.acroField.getWidgets().forEach(widget => {
       try { widget.dict.delete(PDFName.of('AP')) } catch {}
     })
   })
+  // Address and emergency contact fields are always rendered — re-delete their AP unconditionally.
   ;[
     'Applicant_Permanent_Address',  'Applicant_Permanent_Address1',
     'Applicant_Permanent_Town',     'Applicant_Permanent_Town1',
-    'Applicant_Place_of_Marriage',  'Applicant_Place_of_Marriage1',
     'Emergency_First_Contact_Address1',  'Emergency_First_Contact_Address2',
     'Emergency_First_Contact_Town1',     'Emergency_First_Contact_Town2',
     'Emergency_Second_Contact_Address1', 'Emergency_Second_Contact_Address2',
@@ -688,6 +709,18 @@ export async function generatePassportPDF({
       })
     } catch {}
   })
+  // Marriage place is only rendered when the applicant entered marriage data.
+  // For Single applicants these fields were never drawn — leave their AP intact
+  // so flatten() renders the original empty-box design.
+  if (ok(marriagePlaceFull)) {
+    ;['Applicant_Place_of_Marriage', 'Applicant_Place_of_Marriage1'].forEach(name => {
+      try {
+        form.getTextField(name).acroField.getWidgets().forEach(widget => {
+          try { widget.dict.delete(PDFName.of('AP')) } catch {}
+        })
+      } catch {}
+    })
+  }
 
   form.flatten()
 

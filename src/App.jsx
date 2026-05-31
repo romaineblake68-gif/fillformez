@@ -26,8 +26,9 @@ import NISFormReadyScreen from './screens/NISFormReadyScreen'
 import SimplifiedRenewalEligibilityScreen from './screens/SimplifiedRenewalEligibilityScreen'
 import SimplifiedRenewalFormReadyScreen from './screens/SimplifiedRenewalFormReadyScreen'
 
-// DEV ONLY — uncomment to re-enable SR overlay calibration button
-// import SRTestButton from './components/SRTestButton'
+// DEV ONLY — test buttons (hidden in production builds via import.meta.env.DEV guard)
+import SRTestButton       from './components/SRTestButton'
+import PassportTestButton from './components/PassportTestButton'
 
 // Passport application flow screens
 import WelcomeScreen from './screens/WelcomeScreen'
@@ -906,7 +907,13 @@ export default function App() {
 
   const handleEDeclarationSelect = (type) => {
     if (type === 'renewing') {
-      setScreen(S.SECTION_E_PASSPORT)
+      if (dAnswers.dPassportNumber) {
+        // Reuse the number already entered in Section D — skip the entry screen
+        setEPassportNumber(dAnswers.dPassportNumber)
+        setScreen(S.SECTION_E_SIG_NOTICE)
+      } else {
+        setScreen(S.SECTION_E_PASSPORT)
+      }
     } else {
       setScreen(S.SECTION_E_SIG_NOTICE)
     }
@@ -1464,7 +1471,7 @@ export default function App() {
           buttonLabel="Got it"
           onContinue={() => setScreen(S.SECTION_E_COMPLETE)}
           onBack={() =>
-            ePassportNumber
+            (ePassportNumber && !dAnswers.dPassportNumber)
               ? setScreen(S.SECTION_E_PASSPORT)
               : setScreen(S.SECTION_E_DECLARATION)
           }
@@ -1896,8 +1903,9 @@ export default function App() {
           </main>
           <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
           {showOnboarding && <OnboardingModal onDone={handleOnboardingDone} />}
-          {/* DEV ONLY — uncomment when calibrating SR PDF overlay */}
-          {/* <SRTestButton /> */}
+          {/* DEV ONLY — test buttons; never visible in production */}
+          {import.meta.env.DEV && <PassportTestButton />}
+          {import.meta.env.DEV && <SRTestButton />}
         </div>
       )
     }

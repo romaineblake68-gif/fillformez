@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSpeech } from '../hooks/useSpeech'
 import { SECTION_A_QUESTIONS, SECTION_A_BASE_COUNT, SKIP } from '../data/passportFlow'
-import { MIC_PROMPT, SKIP_LABEL, TYPING_TIP, NEARLY_DONE_MSG, NEARLY_DONE_PCT } from '../utils/messages'
+import { MIC_PROMPT, SKIP_LABEL, TYPING_TIP } from '../utils/messages'
 import { normalizeTranscript, computeNameSuggestions } from '../utils/normalizeTranscript'
 import { isMuted, persistMute } from '../utils/muteState'
 
@@ -592,10 +592,6 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
     setTimeout(() => speak(qSpeech), 200)
   }
 
-  // ── Progress ──────────────────────────────────────────────────────────────
-
-  const progressPct = (question.base / baseCount) * 100
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -663,24 +659,10 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
         </button>
       </div>
 
-      {/* Progress bar */}
-      <div className="px-4 pt-3 pb-2 bg-white">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-gray-400">
-            Question {question.base} of {baseCount}
-          </span>
-          <span className="text-xs font-bold" style={{ color: '#16a34a' }}>
-            {progressPct >= NEARLY_DONE_PCT ? NEARLY_DONE_MSG : `${Math.round(progressPct)}% complete`}
-          </span>
-        </div>
-        <div className="h-2.5 rounded-full bg-gray-100 overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${progressPct}%`, background: '#16a34a' }}
-          />
-        </div>
-        {overallPct != null && (
-          <div className="mt-2 flex items-center gap-2">
+      {/* Progress bar — overall form only */}
+      {overallPct != null && (
+        <div className="px-4 pt-3 pb-2 bg-white">
+          <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400 shrink-0">Full form</span>
             <div className="flex-1 h-1 rounded-full bg-gray-100 overflow-hidden">
               <div
@@ -692,8 +674,8 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
               {overallPct}%
             </span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Main body */}
       <div className="flex-1 flex flex-col px-5 pt-6 pb-4 overflow-y-auto">

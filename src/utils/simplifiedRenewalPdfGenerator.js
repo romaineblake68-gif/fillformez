@@ -13,8 +13,8 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 //
 // PHASE STATUS
 //   Phase 1 (active):  Section A rows 1–8, Section B address + cell + email.
-//   Phase 2 (pending): maiden surname, marriage particulars, mailing address,
-//                      home/work phone, emergency contacts, Sections C/D/F.
+//   Phase 2 (active):  maiden surname, marriage particulars, mailing address.
+//   Phase 3 (pending): home/work phone, emergency contacts, Sections C/D/F.
 
 const TEMPLATE_PATH = '/simplified-adult-renewal.pdf'
 const BLACK = rgb(0, 0, 0)
@@ -59,7 +59,7 @@ const FIELDS = {
 
   // ── Section A ──────────────────────────────────────────────────────────────
   surname:          { x:  96, y: A.surname,      size: 9  }, // APPROX
-  // maiden:        { x:  96, y: A.maiden,        size: 9  }, // Phase 2
+  maiden:           { x:  96, y: A.maiden,        size: 9  }, // APPROX
   firstName:        { x:  96, y: A.givenNames,   size: 9  }, // APPROX
   middleName:       { x: 318, y: A.givenNames,   size: 9  }, // APPROX — right column
 
@@ -74,21 +74,21 @@ const FIELDS = {
   visibleFeatures:  { x:  96, y: A.features,     size: 7  }, // APPROX — small; can be long
   maritalStatus:    { x:  96, y: A.marital,       size: 9  }, // APPROX
 
-  // Marriage particulars — Phase 2
-  // spouseSurname:   { x:  96, y: A.spouseNames,  size: 9  },
-  // spouseFirstName: { x: 318, y: A.spouseNames,  size: 9  },
-  // marriageDay:     { x:  96, y: A.marriageDate, size: 8  },
-  // marriageMonth:   { x: 148, y: A.marriageDate, size: 8  },
-  // marriageYear:    { x: 210, y: A.marriageDate, size: 8  },
-  // marriagePlace:   { x:  96, y: A.marriagePlace,size: 9  },
+  // Marriage particulars — conditional on marital status
+  spouseSurname:    { x:  96, y: A.spouseNames,  size: 9  }, // APPROX
+  spouseFirstName:  { x: 318, y: A.spouseNames,  size: 9  }, // APPROX
+  marriageDay:      { x:  96, y: A.marriageDate, size: 8  }, // APPROX
+  marriageMonth:    { x: 148, y: A.marriageDate, size: 8  }, // APPROX
+  marriageYear:     { x: 210, y: A.marriageDate, size: 8  }, // APPROX
+  marriagePlace:    { x:  96, y: A.marriagePlace,size: 9  }, // APPROX
 
   // ── Section B ──────────────────────────────────────────────────────────────
   streetAddress:    { x:  96, y: B.street,        size: 9  }, // APPROX
   townParish:       { x:  96, y: B.parish,         size: 9  }, // APPROX
 
-  // Mailing address — Phase 2
-  // mailingStreet:  { x:  96, y: B.mailingStreet, size: 9  },
-  // mailingParish:  { x:  96, y: B.mailingParish, size: 9  },
+  // Mailing address — conditional on srMailingSame !== 'Yes'
+  mailingStreet:    { x:  96, y: B.mailingStreet, size: 9  }, // APPROX
+  mailingParish:    { x:  96, y: B.mailingParish, size: 9  }, // APPROX
 
   // Phones — three columns on same row
   // homePhone:      { x:  96, y: B.phones,         size: 8  }, // Phase 2
@@ -160,7 +160,7 @@ function overlayPage1(p1, a, font) {
 
   // Section A — Personal Information
   draw(p1, FIELDS.surname,         a.srSurname,       font)
-  // maiden surname — Phase 2
+  draw(p1, FIELDS.maiden,          a.srMaidenSurname, font)
   draw(p1, FIELDS.firstName,       a.srFirstName,     font)
   draw(p1, FIELDS.middleName,      a.srMiddleName,    font)
 
@@ -173,13 +173,21 @@ function overlayPage1(p1, a, font) {
   draw(p1, FIELDS.occupation,     a.srOccupation,      font)
   draw(p1, FIELDS.visibleFeatures,a.srVisibleFeatures, font)
   draw(p1, FIELDS.maritalStatus,  a.srMaritalStatus,   font)
-  // marriage particulars — Phase 2
+  // Marriage particulars — only drawn when answered (ok() skips undefined / __SKIP__)
+  draw(p1, FIELDS.spouseSurname,   a.srSpouseSurname,   font)
+  draw(p1, FIELDS.spouseFirstName, a.srSpouseFirstName, font)
+  draw(p1, FIELDS.marriageDay,   pad2(a.srMarriageDay),                            font)
+  draw(p1, FIELDS.marriageMonth, MONTH_NUM[a.srMarriageMonth] || a.srMarriageMonth, font)
+  draw(p1, FIELDS.marriageYear,  a.srMarriageYear,                                 font)
+  draw(p1, FIELDS.marriagePlace,   a.srMarriagePlace,   font)
 
   // Section B — Contact Information
   draw(p1, FIELDS.streetAddress, a.srStreetAddress, font)
   draw(p1, FIELDS.townParish,    a.srTownParish,    font)
-  // mailing address — Phase 2
-  // home/work phone — Phase 2
+  // Mailing address — only drawn when srMailingSame !== 'Yes' (ok() skips undefined / __SKIP__)
+  draw(p1, FIELDS.mailingStreet, a.srMailingStreet, font)
+  draw(p1, FIELDS.mailingParish, a.srMailingParish, font)
+  // home/work phone — Phase 3
   draw(p1, FIELDS.cellPhone,     a.srCellPhone,     font)
   draw(p1, FIELDS.email,         a.srEmail,         font)
 }

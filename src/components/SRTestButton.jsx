@@ -9,47 +9,57 @@ import { useState } from 'react'
 const TEST_ANSWERS = {
   // Section A — Personal Information
   srSurname:         'Bartholomew-Henderson',   // long hyphenated surname
+  srHasMaiden:       'Yes',
+  srMaidenSurname:   'Wilson',                  // maiden surname — now drawn
   srFirstName:       'Christiana',
+  srHasMiddle:       'Yes',
   srMiddleName:      'Evangeline',
   srBirthDay:        '14',
   srBirthMonth:      'November',
   srBirthYear:       '1985',
   srPlaceOfBirth:    'Kingston',
   srCountryOfBirth:  'Jamaica',
-  srOccupation:      'Administrative Assistant', // two words, moderate length
+  srOccupation:      'Administrative Assistant',
   srVisibleFeatures: 'Scar above left eyebrow, birthmark on right forearm', // long
-  srMaritalStatus:   'Single',
+  srMaritalStatus:   'Married',                 // triggers marriage particulars block
+  srSpouseSurname:   'Morrison',
+  srSpouseFirstName: 'Daniel',
+  srMarriageDay:     '12',
+  srMarriageMonth:   'August',                  // → drawn as "08" via MONTH_NUM
+  srMarriageYear:    '2010',
+  srMarriagePlace:   'Kingston, Jamaica',       // two-part place to test length
 
   // Section B — Contact Information
   srStreetAddress:   '47 Mountainview Avenue, Lot 3', // long address
   srTownParish:      'St. Andrew',
+  srMailingSame:     'No',                      // triggers mailing address block
+  srMailingStreet:   '14 Dunrobin Crescent',    // different mailing address
+  srMailingParish:   'St. Andrew',
   srCellPhone:       '876-555-1234',
+  srHomePhone:       '__SKIP__',                // Phase 3 — not drawn yet
+  srWorkPhone:       '__SKIP__',                // Phase 3 — not drawn yet
   srEmail:           'christiana.bartholomew@example.com', // long email
 
-  // Phase 2 fields — not drawn yet, included so the generator doesn't error
-  srHasMaiden:       'No',
-  srMaidenSurname:   '__SKIP__',
-  srHasMiddle:       'Yes',
-  srMailingSame:     'Yes',
-  srMailingStreet:   '__SKIP__',
-  srMailingParish:   '__SKIP__',
-  srHomePhone:       '__SKIP__',
-  srWorkPhone:       '__SKIP__',
-  srContact1Surname: 'Thompson',
-  srContact1FirstName: 'Marcia',
+  // Phase 3 fields — not drawn yet
+  srContact1Surname:      'Thompson',
+  srContact1FirstName:    'Marcia',
   srContact1Relationship: 'Sister',
-  srContact1Phone:   '876-444-5678',
-  srContact1Address: '__SKIP__',
-  srContact2Surname: '__SKIP__',
-  srHeadCovering:    'No',
-  srReligion:        '__SKIP__',
-  srPassportNumber:  'A1234567',
-  srIssueDay:        '03',
-  srIssueMonth:      'June',
-  srIssueYear:       '2019',
-  srIssuePlace:      'Kingston',
-  srTRN:             '__SKIP__',
-  srNIS:             '__SKIP__',
+  srContact1Phone:        '876-444-5678',
+  srContact1Address:      '__SKIP__',
+  srContact2Surname:      '__SKIP__',
+  srContact2FirstName:    '__SKIP__',
+  srContact2Relationship: '__SKIP__',
+  srContact2Phone:        '__SKIP__',
+  srContact2Address:      '__SKIP__',
+  srHeadCovering:         'No',
+  srReligion:             '__SKIP__',
+  srPassportNumber:       'A1234567',
+  srIssueDay:             '03',
+  srIssueMonth:           'June',
+  srIssueYear:            '2019',
+  srIssuePlace:           'Kingston',
+  srTRN:                  '__SKIP__',
+  srNIS:                  '__SKIP__',
 }
 
 export default function SRTestButton() {

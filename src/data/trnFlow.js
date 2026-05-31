@@ -525,7 +525,7 @@ export const TRN_QUESTIONS = {
     toSpeech: (v) => yearToSpeech(v),
     validate: (v) => {
       const n = parseInt(v, 10)
-      if (isNaN(n) || n < 1900 || n > 2026) return 'Please enter a year between 1900 and 2026.'
+      if (isNaN(n) || n < 1900) return 'Please enter a valid 4-digit year.'
       return null
     },
     next: (ans, allAnswers) =>
