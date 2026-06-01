@@ -26,10 +26,6 @@ import NISFormReadyScreen from './screens/NISFormReadyScreen'
 import SimplifiedRenewalEligibilityScreen from './screens/SimplifiedRenewalEligibilityScreen'
 import SimplifiedRenewalFormReadyScreen from './screens/SimplifiedRenewalFormReadyScreen'
 
-// DEV ONLY — test buttons (hidden in production builds via import.meta.env.DEV guard)
-import SRTestButton       from './components/SRTestButton'
-import PassportTestButton from './components/PassportTestButton'
-
 // Passport application flow screens
 import WelcomeScreen from './screens/WelcomeScreen'
 import RoutingScreen from './screens/RoutingScreen'
@@ -72,6 +68,11 @@ import { NIS_QUESTIONS, NIS_START, NIS_BASE_COUNT } from './data/nisFlow'
 import { SR_QUESTIONS, SR_START, SR_BASE_COUNT } from './data/simplifiedRenewalFlow'
 import { loadProfile, profileHasData, applyAutofill } from './utils/profileStorage'
 import { trackAppOpen, trackFormStart, trackFormComplete } from './utils/analytics'
+
+// DEV-only: fast path to the Passport Review Answers screen
+// import.meta.env.DEV is replaced with `false` in production builds;
+// Rollup/esbuild will tree-shake this module and the button that uses it.
+import DEV_PASSPORT_TEST_DATA from './devTools/passportReviewTestData'
 
 import './index.css'
 
@@ -1602,6 +1603,14 @@ export default function App() {
           f1Answers={f1Answers}
           f2Answers={f2Answers}
           onBack={() => setScreen(S.FINAL_COMPLETE)}
+          onEditAnswer={(sectionKey, questionId, value) => {
+            if      (sectionKey === 'a')  setAAnswers(prev  => ({ ...prev,  [questionId]: value }))
+            else if (sectionKey === 'b')  setBAnswers(prev  => ({ ...prev,  [questionId]: value }))
+            else if (sectionKey === 'c')  setCAnswers(prev  => ({ ...prev,  [questionId]: value }))
+            else if (sectionKey === 'd')  setDAnswers(prev  => ({ ...prev,  [questionId]: value }))
+            else if (sectionKey === 'f1') setF1Answers(prev => ({ ...prev,  [questionId]: value }))
+            else if (sectionKey === 'f2') setF2Answers(prev => ({ ...prev,  [questionId]: value }))
+          }}
         />
       )
 
@@ -1640,6 +1649,7 @@ export default function App() {
           onBack={handleTRNBack}
           onHome={goHome}
           answers={trnAnswers}
+          overallPct={Math.min(99, Math.round((trnHistory.length / TRN_BASE_COUNT) * 100))}
         />
       )
 
@@ -1713,6 +1723,7 @@ export default function App() {
           onBack={handleNISBack}
           onHome={goHome}
           answers={nisAnswers}
+          overallPct={Math.min(99, Math.round((nisHistory.length / NIS_BASE_COUNT) * 100))}
         />
       )
 
@@ -1748,6 +1759,7 @@ export default function App() {
           onBack={handleSRBack}
           onHome={goHome}
           answers={srAnswers}
+          overallPct={Math.min(99, Math.round((srHistory.length / SR_BASE_COUNT) * 100))}
         />
       )
 
@@ -1882,6 +1894,28 @@ export default function App() {
                     }
                   }}
                 />
+
+                {import.meta.env.DEV && (
+                  <div className="px-4 pb-2">
+                    <button
+                      onClick={() => {
+                        setAAnswers(DEV_PASSPORT_TEST_DATA.aAnswers)
+                        setBAnswers(DEV_PASSPORT_TEST_DATA.bAnswers)
+                        setCAnswers(DEV_PASSPORT_TEST_DATA.cAnswers)
+                        setDAnswers(DEV_PASSPORT_TEST_DATA.dAnswers)
+                        setEPassportNumber(DEV_PASSPORT_TEST_DATA.ePassportNumber)
+                        setF1Answers(DEV_PASSPORT_TEST_DATA.f1Answers)
+                        setF2Answers(DEV_PASSPORT_TEST_DATA.f2Answers)
+                        setScreen(S.ANSWERS_SUMMARY)
+                      }}
+                      className="w-full py-3 rounded-xl font-bold text-sm active:opacity-70"
+                      style={{ background: '#1e1e1e', color: '#4ade80', border: '1.5px dashed #4ade80' }}
+                    >
+                      [DEV] Open Passport Review Test
+                    </button>
+                  </div>
+                )}
+
                 <div className="h-4" />
               </>
             )}
@@ -1903,9 +1937,6 @@ export default function App() {
           </main>
           <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
           {showOnboarding && <OnboardingModal onDone={handleOnboardingDone} />}
-          {/* DEV ONLY — test buttons; never visible in production */}
-          {import.meta.env.DEV && <PassportTestButton />}
-          {import.meta.env.DEV && <SRTestButton />}
         </div>
       )
     }
