@@ -1,7 +1,7 @@
 {
   "name": "FillFormEZ",
   "short_name": "FillFormEZ",
-  "description": "Forms made easy. Jamaica style.",
+  "description": "Making forms easier for everyone.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

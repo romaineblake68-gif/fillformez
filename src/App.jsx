@@ -20,6 +20,7 @@ import TRNFormReadyScreen from './screens/TRNFormReadyScreen'
 
 // NIS application flow screens
 import NISWelcomeScreen from './screens/NISWelcomeScreen'
+import NISReviewScreen from './screens/NISReviewScreen'
 import NISFormReadyScreen from './screens/NISFormReadyScreen'
 
 // Simplified Adult Renewal flow screens
@@ -68,11 +69,6 @@ import { NIS_QUESTIONS, NIS_START, NIS_BASE_COUNT } from './data/nisFlow'
 import { SR_QUESTIONS, SR_START, SR_BASE_COUNT } from './data/simplifiedRenewalFlow'
 import { loadProfile, profileHasData, applyAutofill } from './utils/profileStorage'
 import { trackAppOpen, trackFormStart, trackFormComplete } from './utils/analytics'
-
-// DEV-only: fast path to the Passport Review Answers screen
-// import.meta.env.DEV is replaced with `false` in production builds;
-// Rollup/esbuild will tree-shake this module and the button that uses it.
-import DEV_PASSPORT_TEST_DATA from './devTools/passportReviewTestData'
 
 import './index.css'
 
@@ -124,6 +120,7 @@ const S = {
 
   NIS_WELCOME:          'nis-welcome',
   NIS_FLOW:             'nis-flow',
+  NIS_REVIEW:           'nis-review',
   NIS_FORM_READY:       'nis-form-ready',
 
   SR_ELIGIBILITY:       'sr-eligibility',
@@ -997,7 +994,7 @@ export default function App() {
       setTrnQId(nextId)
       // Save progress so user can resume if they leave the app
       try {
-        const pct = Math.min(99, Math.round((newHistory.length / TRN_BASE_COUNT) * 100))
+        const pct = Math.min(99, Math.round(((TRN_QUESTIONS[nextId]?.base ?? TRN_BASE_COUNT) - 1) / TRN_BASE_COUNT * 100))
         const snap = { currentStep: nextId, answers: newAnswers, history: newHistory, savedAt: Date.now(), pct }
         localStorage.setItem(TRN_SAVE_KEY, JSON.stringify(snap))
         setSavedTRNProgress(snap)
@@ -1032,29 +1029,13 @@ export default function App() {
     const q = NIS_QUESTIONS[questionId]
     const nextId = q.next(value, newAnswers)
     if (nextId === null) {
-      import('./utils/nisPdfGenerator').then(({ generateNISPDF }) =>
-        generateNISPDF(newAnswers).then((url) => {
-          trackFormComplete('nis')
-          try { localStorage.removeItem(NIS_SAVE_KEY) } catch {}
-          setSavedNISProgress(null)
-          const entry = {
-            name: 'NIS Registration',
-            completedAt: Date.now(),
-            applicantName: [newAnswers.firstName, newAnswers.lastName].filter(Boolean).join(' '),
-          }
-          const updated = [entry, ...completedForms]
-          setCompletedForms(updated)
-          try { localStorage.setItem(HISTORY_KEY, JSON.stringify(updated)) } catch {}
-          setNisPdfUrl(url)
-          setScreen(S.NIS_FORM_READY)
-        }).catch(err => console.error('[NIS] PDF generation failed:', err))
-      )
+      setScreen(S.NIS_REVIEW)
     } else {
       const newHistory = [...nisHistory, questionId]
       setNisHistory(newHistory)
       setNisQId(nextId)
       try {
-        const pct = Math.min(99, Math.round((newHistory.length / NIS_BASE_COUNT) * 100))
+        const pct = Math.min(99, Math.round(((NIS_QUESTIONS[nextId]?.base ?? NIS_BASE_COUNT) - 1) / NIS_BASE_COUNT * 100))
         const snap = { currentStep: nextId, answers: newAnswers, history: newHistory, savedAt: Date.now(), pct }
         localStorage.setItem(NIS_SAVE_KEY, JSON.stringify(snap))
         setSavedNISProgress(snap)
@@ -1649,7 +1630,7 @@ export default function App() {
           onBack={handleTRNBack}
           onHome={goHome}
           answers={trnAnswers}
-          overallPct={Math.min(99, Math.round((trnHistory.length / TRN_BASE_COUNT) * 100))}
+          overallPct={Math.min(99, Math.round(((TRN_QUESTIONS[trnQId]?.base ?? 1) - 1) / TRN_BASE_COUNT * 100))}
         />
       )
 
@@ -1658,6 +1639,9 @@ export default function App() {
         <TRNReviewScreen
           trnAnswers={trnAnswers}
           onBack={() => setScreen(S.TRN_FLOW)}
+          onEditAnswer={(questionId, value) => {
+            setTrnAnswers(prev => ({ ...prev, [questionId]: value }))
+          }}
           onFormReady={(url) => {
             trackFormComplete('trn')
             // PDF generated — clear saved TRN progress
@@ -1723,7 +1707,33 @@ export default function App() {
           onBack={handleNISBack}
           onHome={goHome}
           answers={nisAnswers}
-          overallPct={Math.min(99, Math.round((nisHistory.length / NIS_BASE_COUNT) * 100))}
+          overallPct={Math.min(99, Math.round(((NIS_QUESTIONS[nisQId]?.base ?? 1) - 1) / NIS_BASE_COUNT * 100))}
+        />
+      )
+
+    case S.NIS_REVIEW:
+      return (
+        <NISReviewScreen
+          nisAnswers={nisAnswers}
+          onBack={() => setScreen(S.NIS_FLOW)}
+          onEditAnswer={(questionId, value) => {
+            setNisAnswers(prev => ({ ...prev, [questionId]: value }))
+          }}
+          onFormReady={(url) => {
+            trackFormComplete('nis')
+            try { localStorage.removeItem(NIS_SAVE_KEY) } catch {}
+            setSavedNISProgress(null)
+            const entry = {
+              name: 'NIS Registration',
+              completedAt: Date.now(),
+              applicantName: [nisAnswers.firstName, nisAnswers.lastName].filter(Boolean).join(' '),
+            }
+            const updated = [entry, ...completedForms]
+            setCompletedForms(updated)
+            try { localStorage.setItem(HISTORY_KEY, JSON.stringify(updated)) } catch {}
+            setNisPdfUrl(url)
+            setScreen(S.NIS_FORM_READY)
+          }}
         />
       )
 
@@ -1894,27 +1904,6 @@ export default function App() {
                     }
                   }}
                 />
-
-                {import.meta.env.DEV && (
-                  <div className="px-4 pb-2">
-                    <button
-                      onClick={() => {
-                        setAAnswers(DEV_PASSPORT_TEST_DATA.aAnswers)
-                        setBAnswers(DEV_PASSPORT_TEST_DATA.bAnswers)
-                        setCAnswers(DEV_PASSPORT_TEST_DATA.cAnswers)
-                        setDAnswers(DEV_PASSPORT_TEST_DATA.dAnswers)
-                        setEPassportNumber(DEV_PASSPORT_TEST_DATA.ePassportNumber)
-                        setF1Answers(DEV_PASSPORT_TEST_DATA.f1Answers)
-                        setF2Answers(DEV_PASSPORT_TEST_DATA.f2Answers)
-                        setScreen(S.ANSWERS_SUMMARY)
-                      }}
-                      className="w-full py-3 rounded-xl font-bold text-sm active:opacity-70"
-                      style={{ background: '#1e1e1e', color: '#4ade80', border: '1.5px dashed #4ade80' }}
-                    >
-                      [DEV] Open Passport Review Test
-                    </button>
-                  </div>
-                )}
 
                 <div className="h-4" />
               </>

@@ -14,7 +14,7 @@ export default function TopNavBar() {
           </span>
         </div>
         <p className="text-xs font-semibold leading-none mt-0.5" style={{ color: '#16a34a' }}>
-          Forms made easy. Jamaica style.
+          Making forms easier for everyone.
         </p>
       </div>
 
