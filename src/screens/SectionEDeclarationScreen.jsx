@@ -39,6 +39,15 @@ function SpeakerIcon() {
   )
 }
 
+function OptionSpeakerIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="white" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+    </svg>
+  )
+}
+
 function CheckIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -102,35 +111,44 @@ export default function SectionEDeclarationScreen({ preSelected, onSelect, onBac
           {DECLARATIONS.map((decl) => {
             const isSelected = selected === decl.type
             return (
-              <button
-                key={decl.type}
-                onClick={() => setSelected(decl.type)}
-                className="w-full text-left rounded-2xl px-5 py-5 transition-all active:scale-[0.98] border-2"
-                style={{
-                  background: isSelected ? '#1a6fe8' : '#ffffff',
-                  borderColor: isSelected ? '#1a6fe8' : '#e5e7eb',
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  {/* Selection indicator */}
-                  <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border-2 transition-all"
-                    style={{
-                      background: isSelected ? 'rgba(255,255,255,0.25)' : 'transparent',
-                      borderColor: isSelected ? 'white' : '#d1d5db',
-                    }}
-                  >
-                    {isSelected && <CheckIcon />}
-                  </div>
+              <div key={decl.type} className="relative">
+                <button
+                  onClick={() => setSelected(decl.type)}
+                  className="w-full text-left rounded-2xl px-5 py-5 transition-all active:scale-[0.98] border-2"
+                  style={{
+                    background: isSelected ? '#1a6fe8' : '#ffffff',
+                    borderColor: isSelected ? '#1a6fe8' : '#e5e7eb',
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Selection indicator */}
+                    <div
+                      className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border-2 transition-all"
+                      style={{
+                        background: isSelected ? 'rgba(255,255,255,0.25)' : 'transparent',
+                        borderColor: isSelected ? 'white' : '#d1d5db',
+                      }}
+                    >
+                      {isSelected && <CheckIcon />}
+                    </div>
 
-                  <p
-                    className="text-base font-semibold leading-snug"
-                    style={{ color: isSelected ? 'white' : '#111827' }}
-                  >
-                    {decl.text}
-                  </p>
-                </div>
-              </button>
+                    <p
+                      className="text-base font-semibold leading-snug pr-8"
+                      style={{ color: isSelected ? 'white' : '#111827' }}
+                    >
+                      {decl.text}
+                    </p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => speak(decl.text)}
+                  aria-label={`Read declaration aloud`}
+                  className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full active:opacity-60 transition-opacity"
+                  style={{ background: '#0d1b38' }}
+                >
+                  <OptionSpeakerIcon />
+                </button>
+              </div>
             )
           })}
         </div>

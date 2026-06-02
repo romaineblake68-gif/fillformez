@@ -124,7 +124,7 @@ function SectionCard({ title, color, entries, editState, onEdit, onSaveEdit, trn
             <div key={questionId || i} className={`px-4 py-3 bg-white ${i > 0 ? 'border-t border-gray-50' : ''}`}>
               <div className="flex items-start gap-2">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-400 mb-0.5 leading-snug">{label}</p>
+                  <p className="text-[13px] text-gray-600 mb-0.5 leading-snug">{label}</p>
                   {!isEditing && <p className="text-black font-semibold text-sm break-words">{value}</p>}
                 </div>
                 {!isEditing && q && (

@@ -207,8 +207,8 @@ export async function generatePassportPDF({
   ].forEach(name => {
     try { form.getTextField(name).acroField.dict.delete(PDFName.of('MaxLen')) } catch {}
   })
-  const permStreet = [aAnswers.streetAddress, aAnswers.postOffice].filter(ok).join(', ')
-  const permTown   = aAnswers.townParish
+  const permStreet = aAnswers.streetAddress
+  const permTown   = [aAnswers.postOffice, aAnswers.townParish].filter(ok).join(', ')
   // permStreet and permTown are drawn manually in the comb rendering section below
   setText(form, 'Applicant_Permanent_Country', aAnswers.country || 'Jamaica')
 

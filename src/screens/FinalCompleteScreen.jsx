@@ -57,7 +57,7 @@ export default function FinalCompleteScreen({ onReview, onFormReady, allAnswers 
 
   const handleShare = () => {
     const text = encodeURIComponent(
-      `I just used FillFormEasy to guide me through my passport application — it is so easy! Try it free: ${window.location.origin}`
+      `I just used FillFormEZ to fill my entire Passport Application for me — it's so easy! Try it free: https://fillformez.com`
     )
     window.open(`https://wa.me/?text=${text}`, '_blank')
   }

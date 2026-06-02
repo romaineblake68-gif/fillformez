@@ -45,6 +45,15 @@ function MutedSpeakerIcon() {
   )
 }
 
+function OptionSpeakerIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="white" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+    </svg>
+  )
+}
+
 function CheckIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -199,14 +208,23 @@ function ChoiceGrid({ options, onSelect, speak }) {
   return (
     <div className={`grid ${cols} gap-2.5 w-full`}>
       {options.map((opt) => (
-        <button
-          key={opt}
-          onClick={() => handleTap(opt)}
-          className={`${py} ${textSize} rounded-2xl font-bold active:scale-95 transition-transform text-center`}
-          style={{ background: '#16a34a', color: 'white' }}
-        >
-          {opt}
-        </button>
+        <div key={opt} className="relative">
+          <button
+            onClick={() => handleTap(opt)}
+            className={`w-full ${py} ${textSize} rounded-2xl font-bold active:scale-95 transition-transform text-center`}
+            style={{ background: '#16a34a', color: 'white' }}
+          >
+            {opt}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); speak?.(opt) }}
+            aria-label={`Read "${opt}" aloud`}
+            className="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full active:opacity-60 transition-opacity"
+            style={{ background: '#0d1b38' }}
+          >
+            <OptionSpeakerIcon />
+          </button>
+        </div>
       ))}
     </div>
   )
