@@ -5,6 +5,9 @@ import { MIC_PROMPT, SKIP_LABEL, TYPING_TIP } from '../utils/messages'
 import { normalizeTranscript, computeNameSuggestions } from '../utils/normalizeTranscript'
 import { isMuted, persistMute } from '../utils/muteState'
 
+// ── Voice privacy acknowledgement ─────────────────────────────────────────────
+const VOICE_ACK_KEY = 'fillformeez_voice_ack'
+
 // ── Inline icons ──────────────────────────────────────────────────────────────
 
 function ChevronLeft() {
@@ -164,6 +167,46 @@ function HintSheet({ hint, onClose }) {
           style={{ background: '#16a34a' }}
         >
           Got it
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Voice privacy notice sheet ────────────────────────────────────────────────
+// Shown once before the first mic use. Backdrop is not tappable — user must
+// explicitly acknowledge so the notice cannot be dismissed by accident.
+
+function VoicePrivacySheet({ onAck }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end" style={{ background: 'rgba(0,0,0,0.45)' }}>
+      <div
+        className="bg-white rounded-t-3xl w-full max-w-[430px] mx-auto px-6 pt-5 pb-10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-10 h-1 rounded-full mx-auto mb-5 bg-gray-200" />
+        <div
+          className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
+          style={{ background: '#f0fdf4' }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="#16a34a" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="#16a34a" strokeWidth="2" fill="none" strokeLinecap="round" />
+            <line x1="12" y1="19" x2="12" y2="23" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" />
+            <line x1="8" y1="23" x2="16" y2="23" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </div>
+        <p className="text-black font-bold text-lg mb-3">Voice Input Notice</p>
+        <p className="text-gray-600 text-base leading-relaxed">
+          Voice input uses your device's speech recognition service to convert speech to text.
+          Avoid speaking sensitive information in public places.
+        </p>
+        <button
+          onClick={onAck}
+          className="mt-6 w-full py-4 rounded-2xl font-bold text-white text-base active:opacity-80"
+          style={{ background: '#16a34a' }}
+        >
+          I understand, continue
         </button>
       </div>
     </div>
@@ -358,6 +401,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
   const [preFilledHint, setPreFilledHint] = useState(false)
   const [suggestedNames, setSuggestedNames] = useState([])
   const [confirmListening, setConfirmListening] = useState(false)
+  const [showVoiceNotice, setShowVoiceNotice] = useState(false)
 
   const {
     speak,
@@ -445,12 +489,7 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
 
   // ── Voice recording ───────────────────────────────────────────────────────
 
-  const handleMicPress = () => {
-    if (isListening) {
-      stopListening()
-      setPhase('question')
-      return
-    }
+  const doStartListening = () => {
     stopSpeaking()
     setMicError(null)
     setPhase('recording')
@@ -492,6 +531,27 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
         else setMicError('Could not hear you clearly. Please try again.')
       },
     )
+  }
+
+  const handleMicPress = () => {
+    if (isListening) {
+      stopListening()
+      setPhase('question')
+      return
+    }
+    try {
+      if (!localStorage.getItem(VOICE_ACK_KEY)) {
+        setShowVoiceNotice(true)
+        return
+      }
+    } catch {}
+    doStartListening()
+  }
+
+  const handleVoiceAck = () => {
+    try { localStorage.setItem(VOICE_ACK_KEY, '1') } catch {}
+    setShowVoiceNotice(false)
+    doStartListening()
   }
 
   // ── Choice / yesno / typed text selection ────────────────────────────────
@@ -936,6 +996,9 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
 
       {/* Hint sheet */}
       {showHint && <HintSheet hint={question.hint} onClose={handleCloseHint} />}
+
+      {/* Voice privacy notice — shown once before first mic use */}
+      {showVoiceNotice && <VoicePrivacySheet onAck={handleVoiceAck} />}
     </div>
   )
 }
