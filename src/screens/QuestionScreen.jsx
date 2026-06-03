@@ -649,6 +649,16 @@ export default function QuestionScreen({ questionId, questions = SECTION_A_QUEST
     speak('Looks like the mic is having trouble catching that answer clearly. You can type the answer below.')
   }, [redoCount])
 
+  // ── Auto-speak voice privacy notice when it appears ──────────────────────
+
+  useEffect(() => {
+    if (!showVoiceNotice) return
+    const timer = setTimeout(() => speak(
+      "Voice input uses your device's speech recognition service to convert speech to text. Avoid speaking sensitive information in public places."
+    ), 200)
+    return () => clearTimeout(timer)
+  }, [showVoiceNotice])
+
   // ── Replay question ───────────────────────────────────────────────────────
 
   const handleReplay = () => {
