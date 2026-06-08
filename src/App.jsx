@@ -524,6 +524,8 @@ export default function App() {
       TRN_SAVE_KEY, NIS_SAVE_KEY, SR_SAVE_KEY,
       'fillformeez_analytics_v1',
       'fillformeez_profile_v1',
+      'fillformeez_voice_ack',
+      'fillformeez_onboarded',
     ].forEach(key => { try { localStorage.removeItem(key) } catch {} })
 
     // 2. Revoke any active PDF blob URLs so the PDF data is freed from memory
