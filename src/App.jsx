@@ -348,6 +348,45 @@ function SRComingSoonOverlay({ onContinue }) {
   )
 }
 
+function ResumeConfirmSheet({ formName, savedAtLabel, onConfirm, onDecline }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: 'rgba(13,27,56,0.5)' }}
+      onClick={onDecline}
+    >
+      <div
+        className="w-full rounded-t-3xl px-6 pt-5 pb-10 bg-white"
+        style={{ maxWidth: 430 }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="w-10 h-1.5 rounded-full mx-auto mb-5 bg-gray-200" />
+        <h2 className="font-bold text-xl mb-2" style={{ color: '#0d1b38' }}>Saved form found</h2>
+        <p className="text-sm leading-relaxed mb-1" style={{ color: '#374151' }}>
+          This device has a saved <strong>{formName}</strong>. Only continue if this is your form.
+        </p>
+        {savedAtLabel
+          ? <p className="text-xs text-gray-400 mb-6">Saved {savedAtLabel}</p>
+          : <div className="mb-6" />
+        }
+        <button
+          onClick={onConfirm}
+          className="w-full py-4 rounded-2xl font-bold text-white text-base mb-3 active:opacity-80 transition-opacity"
+          style={{ background: '#16a34a' }}
+        >
+          Yes, continue my form
+        </button>
+        <button
+          onClick={onDecline}
+          className="w-full py-4 rounded-2xl font-semibold text-base border-2 border-gray-200 text-gray-600 active:bg-gray-50 transition-colors"
+        >
+          Not my form
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -470,6 +509,9 @@ export default function App() {
       return raw ? JSON.parse(raw) : null
     } catch { return null }
   })
+
+  // Resume confirmation — set before calling any resume handler
+  const [pendingResume, setPendingResume] = useState(null)
 
   // Dynamic back destinations
   const [sectionDBack, setSectionDBack] = useState(S.SECTION_C_ROUTING)
@@ -1877,7 +1919,7 @@ export default function App() {
                     stepNum={prog.stepNum}
                     stepOf={prog.stepOf}
                     savedAtLabel={formatSavedAt(savedProgress.savedAt)}
-                    onResume={handleResume}
+                    onResume={() => setPendingResume({ handler: handleResume, formName: 'Passport Application', savedAtLabel: formatSavedAt(savedProgress.savedAt) })}
                     onStartFresh={handleStartFresh}
                   />
                 )}
@@ -1886,7 +1928,7 @@ export default function App() {
                     formName="TRN Application"
                     pct={savedTRNProgress.pct ?? null}
                     savedAtLabel={savedTRNProgress.savedAt ? formatSavedAt(savedTRNProgress.savedAt) : null}
-                    onResume={handleTRNResume}
+                    onResume={() => setPendingResume({ handler: handleTRNResume, formName: 'TRN Application', savedAtLabel: savedTRNProgress.savedAt ? formatSavedAt(savedTRNProgress.savedAt) : null })}
                   />
                 )}
                 {savedNISProgress && (
@@ -1894,7 +1936,7 @@ export default function App() {
                     formName="NIS Registration"
                     pct={savedNISProgress.pct ?? null}
                     savedAtLabel={savedNISProgress.savedAt ? formatSavedAt(savedNISProgress.savedAt) : null}
-                    onResume={handleNISResume}
+                    onResume={() => setPendingResume({ handler: handleNISResume, formName: 'NIS Registration', savedAtLabel: savedNISProgress.savedAt ? formatSavedAt(savedNISProgress.savedAt) : null })}
                   />
                 )}
                 {savedSRProgress && (
@@ -1902,7 +1944,7 @@ export default function App() {
                     formName="Simplified Passport Renewal"
                     pct={savedSRProgress.pct ?? null}
                     savedAtLabel={savedSRProgress.savedAt ? formatSavedAt(savedSRProgress.savedAt) : null}
-                    onResume={handleSRResume}
+                    onResume={() => setPendingResume({ handler: handleSRResume, formName: 'Simplified Passport Renewal', savedAtLabel: savedSRProgress.savedAt ? formatSavedAt(savedSRProgress.savedAt) : null })}
                   />
                 )}
                 <FormPicker
@@ -1926,10 +1968,10 @@ export default function App() {
                 completedForms={completedForms}
                 inProgressForms={inProgressForms}
                 onResume={(id) => {
-                  if (id === 'passport') handleResume()
-                  else if (id === 'trn') handleTRNResume()
-                  else if (id === 'nis') handleNISResume()
-                  else if (id === 'simplified-renewal') handleSRResume()
+                  if (id === 'passport') setPendingResume({ handler: handleResume, formName: 'Passport Application', savedAtLabel: savedProgress?.savedAt ? formatSavedAt(savedProgress.savedAt) : null })
+                  else if (id === 'trn') setPendingResume({ handler: handleTRNResume, formName: 'TRN Application', savedAtLabel: savedTRNProgress?.savedAt ? formatSavedAt(savedTRNProgress.savedAt) : null })
+                  else if (id === 'nis') setPendingResume({ handler: handleNISResume, formName: 'NIS Registration', savedAtLabel: savedNISProgress?.savedAt ? formatSavedAt(savedNISProgress.savedAt) : null })
+                  else if (id === 'simplified-renewal') setPendingResume({ handler: handleSRResume, formName: 'Simplified Passport Renewal', savedAtLabel: savedSRProgress?.savedAt ? formatSavedAt(savedSRProgress.savedAt) : null })
                 }}
                 onStartForm={() => setActiveTab('home')}
               />
@@ -1938,6 +1980,14 @@ export default function App() {
           </main>
           <BottomNavBar activeTab={activeTab} onTabChange={setActiveTab} />
           {showOnboarding && <OnboardingModal onDone={handleOnboardingDone} />}
+          {pendingResume && (
+            <ResumeConfirmSheet
+              formName={pendingResume.formName}
+              savedAtLabel={pendingResume.savedAtLabel}
+              onConfirm={() => { pendingResume.handler(); setPendingResume(null) }}
+              onDecline={() => setPendingResume(null)}
+            />
+          )}
         </div>
       )
     }
