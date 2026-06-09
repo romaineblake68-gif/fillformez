@@ -29,6 +29,16 @@ const SLIDES = [
       </svg>
     ),
   },
+  {
+    heading: 'What we save — and how to clear it',
+    body: 'We save your profile details and form progress on this device only. If you use voice input, your browser\'s speech service processes your voice — not FillFormEZ. You can erase everything at any time from the Profile tab using Clear All My Data.',
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </svg>
+    ),
+  },
 ]
 
 export const ONBOARDING_KEY = 'fillformeez_onboarded'
